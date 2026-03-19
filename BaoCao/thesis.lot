@@ -1,0 +1,22 @@
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1.1}{\ignorespaces Các metric đánh giá được sử dụng trong dự án.}}{7}{table.caption.5}%
+\contentsline {table}{\numberline {1.2}{\ignorespaces Thông tin tổng quan về tập dữ liệu.}}{8}{table.caption.6}%
+\contentsline {table}{\numberline {1.3}{\ignorespaces Data dictionary -- Danh sách và ý nghĩa các cột dữ liệu.}}{9}{table.caption.7}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Các bước trong pipeline khai phá dữ liệu.}}{17}{table.caption.13}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Quy tắc rời rạc hóa các biến liên tục theo ngưỡng y khoa.}}{21}{table.caption.14}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Các mô hình phân lớp và tham số chính cùng lý do lựa chọn.}}{23}{table.caption.15}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Cấu trúc thư mục và vai trò trong dự án.}}{27}{table.caption.16}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Danh sách notebook và chức năng chi tiết.}}{28}{table.caption.17}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Top 10 luật kết hợp liên quan đến bệnh tim (sắp xếp theo confidence giảm dần).}}{38}{table.caption.18}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Kết quả phân lớp trên tập test gồm 184 mẫu (sắp xếp theo PR-AUC giảm dần).}}{41}{table.caption.21}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Kết quả 5-Fold Stratified Cross-Validation (metric: F1-Score).}}{42}{table.caption.22}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces So sánh chi tiết F1-Score và PR-AUC theo tỷ lệ nhãn -- Semi-supervised Learning.}}{44}{table.caption.26}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces So sánh kết quả với các nghiên cứu khác trên UCI Heart Disease Dataset.}}{46}{table.caption.27}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces So sánh chi tiết ưu điểm và hạn chế của các mô hình trên tập dữ liệu Heart Disease.}}{48}{table.caption.28}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Tổng hợp kết quả đạt được đối chiếu tiêu chí thành công.}}{56}{table.caption.29}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Phân công công việc của các thành viên nhóm.}}{61}{table.caption.30}%

@@ -1,0 +1,218 @@
+\chapter{Phân tích mã nguồn và chức năng hệ thống}\label{chapter_code}
+
+\section{Tổng quan kiến trúc hệ thống}
+
+Hệ thống dự đoán bệnh tim được phát triển bằng ngôn ngữ Python, tận dụng hệ sinh thái thư viện khoa học dữ liệu phong phú của Python bao gồm Pandas, NumPy, scikit-learn \cite{pedregosa2011scikit}, XGBoost, mlxtend và Matplotlib. Mã nguồn được quản lý trên GitHub, tuân theo các best practices trong phát triển dự án Data Science: quản lý phiên bản (version control), cấu trúc module hóa, tách biệt giữa code logic và notebook trình diễn, và quản lý tham số tập trung.
+
+Kiến trúc tổng thể của dự án tuân theo mô hình \textbf{ba lớp} (three-tier architecture):
+\begin{itemize}
+    \item \textbf{Lớp trình diễn (Presentation Layer):} Các Jupyter notebooks (\texttt{notebooks/}) phục vụ phân tích tương tác và trình diễn kết quả; ứng dụng Streamlit (\texttt{app.py}) cung cấp giao diện web demo cho người dùng cuối.
+    \item \textbf{Lớp logic nghiệp vụ (Business Logic Layer):} Các module Python trong thư mục \texttt{src/} chứa toàn bộ logic xử lý dữ liệu, xây dựng đặc trưng, huấn luyện mô hình và đánh giá. Các module này được thiết kế để tái sử dụng -- có thể gọi từ notebook, script hoặc ứng dụng web.
+    \item \textbf{Lớp dữ liệu (Data Layer):} Thư mục \texttt{data/} chứa dữ liệu gốc và đã xử lý; \texttt{outputs/} chứa kết quả (mô hình, biểu đồ, bảng); \texttt{configs/} chứa tham số cấu hình.
+\end{itemize}
+
+Thiết kế ba lớp giúp phân tách rõ ràng giữa giao diện, logic và dữ liệu, tạo ra codebase dễ bảo trì, mở rộng và kiểm thử. Khi cần thay đổi thuật toán hoặc tham số, chỉ cần sửa ở lớp logic mà không ảnh hưởng đến giao diện; khi cần thay đổi dữ liệu đầu vào, chỉ cần cập nhật đường dẫn trong file cấu hình.
+
+\section{Cấu trúc repository chi tiết}
+
+Bảng \ref{tab:repo_structure} trình bày cấu trúc thư mục và file chính của dự án, cùng với vai trò cụ thể của từng thành phần:
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc thư mục và vai trò trong dự án.}
+\label{tab:repo_structure}
+\small
+\begin{tabular}{|l|p{9cm}|}
+\hline
+\textbf{Thư mục / File} & \textbf{Vai trò và mô tả chi tiết} \\ \hline
+\texttt{configs/params.yaml} & File cấu hình tập trung dạng YAML, chứa: random seed (42), đường dẫn dữ liệu, tỷ lệ chia train/test (80/20), chiến lược xử lý missing, hyperparameters của Apriori, KMeans, Classification và Semi-supervised \\ \hline
+\texttt{data/raw/heart.csv} & Dữ liệu gốc UCI Heart Disease (920 dòng $\times$ 16 cột), chưa qua bất kỳ xử lý nào \\ \hline
+\texttt{data/processed/} & Dữ liệu sau tiền xử lý: \texttt{heart\_processed.csv} (clean), \texttt{heart\_discretized.csv} (binary cho Apriori) \\ \hline
+\texttt{notebooks/} & 6 Jupyter notebooks chạy tuần tự theo pipeline (01\_eda đến 05\_evaluation) \\ \hline
+\texttt{src/} & Mã nguồn Python tái sử dụng, gồm 6 sub-packages: data, features, mining, models, evaluation, visualization \\ \hline
+\texttt{scripts/run\_pipeline.py} & Script chạy end-to-end pipeline tự động, gọi các module từ \texttt{src/} \\ \hline
+\texttt{scripts/run\_papermill.py} & Script chạy tất cả notebooks bằng Papermill (execution engine cho Jupyter) \\ \hline
+\texttt{outputs/figures/} & 10 biểu đồ kết quả dạng PNG (phân bố, tương quan, ROC/PR, confusion matrix, so sánh mô hình, cluster profiles, learning curve) \\ \hline
+\texttt{outputs/tables/} & 5 file kết quả: classification\_results.csv, cross\_validation\_results.csv, semi\_supervised\_learning\_curve.csv, association\_rules\_heart.csv, summary\_report.txt \\ \hline
+\texttt{outputs/models/} & Mô hình đã huấn luyện dạng \texttt{.joblib}, bao gồm model và scaler paired (ví dụ: \texttt{random\_forest.joblib}, 3.5 MB) \\ \hline
+\texttt{app.py} & Ứng dụng demo Streamlit: cho phép người dùng nhập thông tin lâm sàng và nhận dự đoán nguy cơ bệnh tim real-time \\ \hline
+\texttt{requirements.txt} & Danh sách 15+ thư viện Python cần thiết với phiên bản cụ thể \\ \hline
+\texttt{README.md} & Tài liệu hướng dẫn dự án (mô tả, cài đặt, cách chạy, kết quả mẫu) \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Vai trò và chức năng các notebook}
+
+Các notebook trong thư mục \texttt{notebooks/} được thiết kế như tài liệu thực thi (executable documentation) -- vừa chứa code vừa chứa giải thích, biểu đồ và phân tích. Mỗi notebook tương ứng với một giai đoạn trong pipeline:
+
+\begin{table}[H]
+\centering
+\caption{Danh sách notebook và chức năng chi tiết.}
+\label{tab:notebooks}
+\small
+\begin{tabular}{|l|p{4cm}|p{5.5cm}|}
+\hline
+\textbf{Notebook} & \textbf{Chức năng chính} & \textbf{Output tạo ra} \\ \hline
+\texttt{01\_eda.ipynb} & Khám phá dữ liệu: thống kê mô tả, trực quan hóa phân bố, kiểm tra missing, tương quan, outliers & Biểu đồ: target\_distribution, numeric\_distributions, correlation\_matrix, missing\_values, features\_vs\_target \\ \hline
+\texttt{02\_preprocess\_feature.ipynb} & Tiền xử lý đầy đủ: fill missing, handle outlier, encode, tạo target binary, rời rạc hóa cho Apriori & heart\_processed.csv, heart\_discretized.csv \\ \hline
+\texttt{03\_mining\_or\_clustering.ipynb} & Apriori (luật kết hợp) + KMeans/Hierarchical (phân cụm) & association\_rules\_heart.csv, elbow\_silhouette.png, cluster\_profiles.png \\ \hline
+\texttt{04\_modeling.ipynb} & Train/evaluate 6 mô hình phân lớp + 5-fold CV + save best model & classification\_results.csv, cross\_validation\_results.csv, roc\_pr\_curves.png, cm\_random\_forest.png, model\_comparison.png \\ \hline
+\texttt{04b\_semi\_supervised.ipynb} & Self-training + Label Spreading ở 6 tỷ lệ nhãn & semi\_supervised\_learning\_curve.csv \\ \hline
+\texttt{05\_evaluation\_report.ipynb} & Tổng hợp tất cả kết quả, insights, phân tích lỗi & summary\_report.txt, actionable insights \\ \hline
+\end{tabular}
+\end{table}
+
+Notebooks được chạy theo thứ tự: \texttt{01\_eda} $\rightarrow$ \texttt{02\_preprocess} $\rightarrow$ \texttt{03\_mining} $\rightarrow$ \texttt{04\_modeling} $\rightarrow$ \texttt{04b\_semi\_supervised} $\rightarrow$ \texttt{05\_evaluation}. Mỗi notebook import các hàm từ \texttt{src/} thay vì viết code trực tiếp, giúp notebook ngắn gọn và tập trung vào phân tích.
+
+\section{Mô tả chức năng các module chính}
+
+Thư mục \texttt{src/} là trung tâm logic của hệ thống, gồm 6 sub-packages tương ứng với 6 chức năng trong pipeline. Mỗi sub-package chứa một hoặc nhiều file Python, mỗi file chứa các hàm (functions) thực hiện một nhiệm vụ cụ thể. Dưới đây mô tả chi tiết chức năng của từng module.
+
+\subsection{Module \texttt{src/data/} -- Tải và tiền xử lý dữ liệu}
+
+Package \texttt{data} chịu trách nhiệm cho tất cả các thao tác liên quan đến dữ liệu thô, bao gồm đọc, kiểm tra và tiền xử lý. Đây là module nền tảng được sử dụng bởi tất cả các bước tiếp theo trong pipeline.
+
+\textbf{File \texttt{loader.py}} cung cấp hàm đọc dữ liệu từ file CSV vào Pandas DataFrame, thực hiện kiểm tra cơ bản (số dòng, số cột, kiểu dữ liệu) và hiển thị thông tin tổng quan. Module này đóng vai trò ``cổng vào'' (entry point) của pipeline.
+
+\textbf{File \texttt{cleaner.py}} là module tiền xử lý trung tâm, chứa 7 hàm chính tạo thành một pipeline xử lý đầy đủ:
+
+\begin{itemize}
+    \item \texttt{create\_binary\_target(df, target\_col="num")}: Chuyển đổi cột \texttt{num} (multi-class 0--4) thành biến binary \texttt{target} (0/1). Hàm tạo cột mới \texttt{target} trong DataFrame, giữ nguyên cột \texttt{num} gốc để tham chiếu.
+    \item \texttt{handle\_missing\_values(df, strategy, threshold)}: Xử lý missing values theo 3 chiến lược có thể cấu hình. Hàm hỗ trợ cả chiến lược ``drop\_high\_missing'' (loại bỏ cột thiếu $>$ threshold\%), ``fill\_all'' (fill median/mode) và ``drop\_rows'' (loại bỏ hàng). Chiến lược được chỉ định qua tham số \texttt{strategy}.
+    \item \texttt{\_fill\_missing(df)}: Hàm nội bộ (private) thực hiện fill missing: median cho biến số (ít bị outlier ảnh hưởng), mode cho biến phân loại (giá trị phổ biến nhất).
+    \item \texttt{encode\_categorical(df, method)}: Mã hóa tất cả biến phân loại, hỗ trợ cả Label Encoding và One-hot Encoding. Trả về DataFrame đã encode kèm dictionary mapping (giúp decode ngược khi diễn giải).
+    \item \texttt{remove\_outliers(df, numeric\_cols, method, factor)}: Phát hiện và xử lý outlier bằng IQR với hệ số 1.5 (mặc định). Hàm clip giá trị về ngưỡng thay vì drop hàng, bảo toàn kích thước mẫu. Cho phép chỉ định danh sách cột cần kiểm tra.
+    \item \texttt{scale\_features(df, cols, method)}: Chuẩn hóa features bằng StandardScaler. Trả về DataFrame đã scale kèm đối tượng scaler (cần lưu lại để transform dữ liệu mới).
+    \item \texttt{full\_cleaning\_pipeline(df, ...)}: Pipeline orchestrator -- gọi tuần tự tất cả các hàm trên với tham số có thể tùy chỉnh qua file cấu hình. Đây là hàm ``one-call'' để chạy toàn bộ tiền xử lý.
+\end{itemize}
+
+\subsection{Module \texttt{src/features/} -- Xây dựng đặc trưng}
+
+Package \texttt{features} chịu trách nhiệm cho Feature Engineering, biến đổi dữ liệu đã sạch thành dạng phù hợp cho từng thuật toán cụ thể. Module này nằm giữa lớp tiền xử lý và lớp modeling, đóng vai trò ``adapter'' chuyển đổi format dữ liệu.
+
+\textbf{File \texttt{builder.py}} chứa 2 hàm chính:
+
+\begin{itemize}
+    \item \texttt{discretize\_for\_apriori(df)}: Hàm rời rạc hóa dài nhất trong module ($\sim$120 dòng), xử lý từng biến theo ngưỡng y khoa: age (4 nhóm tuổi), sex (binary is\_male), cp (4 loại đau ngực), trestbps (3 mức huyết áp), chol (3 mức cholesterol), fbs (binary fbs\_high), restecg (binary ecg\_normal/abnormal), thalch (3 mức nhịp tim), exang (binary exercise\_angina), oldpeak (3 mức ST depression), slope (các mức), ca (binary ca\_zero/positive), thal (3 loại). Kết quả: DataFrame với $\sim$25--30 cột binary, phù hợp cho Apriori.
+    \item \texttt{select\_features\_for\_modeling(df, target\_col, drop\_cols)}: Tách DataFrame thành ma trận đặc trưng $X$ (loại bỏ id, dataset, num, target) và vector nhãn $y$. In thông tin về shape và phân bố target để kiểm tra.
+\end{itemize}
+
+\subsection{Module \texttt{src/mining/} -- Khai phá dữ liệu}
+
+Package \texttt{mining} triển khai hai kỹ thuật khai phá dữ liệu không giám sát và bán giám sát: luật kết hợp và phân cụm. Đây là phần thể hiện rõ nhất nội dung ``khai phá dữ liệu'' trong tên đề tài.
+
+\textbf{File \texttt{association.py}} triển khai luật kết hợp Apriori với 3 hàm:
+\begin{itemize}
+    \item \texttt{run\_apriori(df\_binary, min\_support, min\_confidence, min\_lift)}: Hàm chính -- chạy Apriori tìm frequent itemsets, sinh association rules, lọc rules liên quan bệnh tim (consequent chứa ``heart\_disease''). Sử dụng thư viện mlxtend. Trả về 3 DataFrame: frequent\_itemsets, rules (tất cả), rules\_heart (chỉ liên quan bệnh tim).
+    \item \texttt{format\_rules\_table(rules, top\_n)}: Format luật thành bảng dễ đọc, chuyển frozenset sang chuỗi text, làm tròn số. Phục vụ xuất CSV và hiển thị trong notebook.
+    \item \texttt{interpret\_rules(rules\_heart, top\_n)}: Diễn giải tự động luật trong ngữ cảnh y khoa. Tạo câu mô tả dạng: ``Nếu [antecedents] $\rightarrow$ Nguy cơ bệnh tim (confidence X\%, gấp Y lần trung bình)''.
+\end{itemize}
+
+\textbf{File \texttt{clustering.py}} triển khai phân cụm với 5 hàm:
+\begin{itemize}
+    \item \texttt{find\_optimal\_k(X, k\_range)}: Tìm số cụm tối ưu bằng 3 phương pháp: Elbow (inertia), Silhouette Score và Davies-Bouldin Index. Trả về dictionary chứa kết quả cho mỗi giá trị $k$, cùng $k$ tối ưu (Silhouette cao nhất).
+    \item \texttt{run\_kmeans(X, n\_clusters)}: Chạy KMeans với \texttt{n\_init=10}, trả về labels, model, Silhouette Score và DBI. In phân bố mẫu theo cụm.
+    \item \texttt{run\_hierarchical(X, n\_clusters, linkage)}: Chạy Agglomerative Clustering (mặc định: Ward linkage), trả về tương tự KMeans. Cho phép so sánh trực tiếp hai phương pháp.
+    \item \texttt{profile\_clusters(df, cluster\_labels)}: Tạo bảng profile: tính mean và std của từng feature theo cluster, tính tỷ lệ bệnh tim trong mỗi cluster. Nhận diện tự động cluster ``nguy cơ cao'' (tỷ lệ bệnh $> 60\%$) và ``nguy cơ thấp'' ($< 30\%$).
+    \item \texttt{get\_cluster\_insights(df, cluster\_labels)}: Rút insight tự động bằng cách so sánh mean của từng cluster với mean tổng thể, sử dụng z-score. Features có $|z| > 0.5$ được coi là ``nổi bật'' cho cluster đó.
+\end{itemize}
+
+\subsection{Module \texttt{src/models/} -- Huấn luyện mô hình}
+
+Package \texttt{models} là trung tâm của hệ thống, triển khai tất cả các mô hình phân lớp (giám sát và bán giám sát). Đây là package lớn nhất với tổng cộng hơn 500 dòng code.
+
+\textbf{File \texttt{supervised.py}} ($\sim$235 dòng) triển khai phân lớp giám sát với 5 hàm:
+\begin{itemize}
+    \item \texttt{get\_models(random\_state)}: Khởi tạo dictionary chứa 6 mô hình (Dummy, Logistic, SVM linear, SVM RBF, Random Forest, XGBoost) với hyperparameters đã được cấu hình. Tất cả model dùng chung random\_state để reproducible.
+    \item \texttt{apply\_smote(X\_train, y\_train)}: Áp dụng SMOTE cân bằng lớp. In số mẫu trước/sau SMOTE để kiểm tra. Chỉ áp dụng trên tập train để tránh data leakage.
+    \item \texttt{train\_and\_evaluate(X\_train, X\_test, y\_train, y\_test)}: Hàm chính -- thực hiện scale (fit trên train), SMOTE (tùy chọn), train và evaluate lần lượt từng mô hình. Tính F1, ROC-AUC, PR-AUC, confusion matrix, ROC/PR curves. Phân tích False Negative đặc biệt. Trả về dictionary kết quả chi tiết và DataFrame so sánh.
+    \item \texttt{cross\_validate\_models(X, y, cv)}: 5-fold Stratified Cross-Validation cho tất cả mô hình. Scale dữ liệu trước CV (chấp nhận nhẹ leakage ở bước này vì CV chỉ để ước lượng variance). Trả về DataFrame với Mean F1 và Std F1.
+    \item \texttt{save\_model(model, scaler, name)}: Lưu model và scaler cùng nhau dưới dạng dictionary vào file \texttt{.joblib}. Thiết kế paired save đảm bảo prediction pipeline luôn có đúng scaler tương ứng.
+\end{itemize}
+
+\textbf{File \texttt{semi\_supervised.py}} ($\sim$280 dòng) triển khai học bán giám sát với 6 hàm:
+\begin{itemize}
+    \item \texttt{create\_partial\_labels(y, label\_ratio)}: Giả lập kịch bản thiếu nhãn: giữ lại $r\%$ nhãn gốc (chọn ngẫu nhiên, stratified), phần còn lại đặt $-1$. Trả về labels mới và mask boolean cho dữ liệu có nhãn gốc.
+    \item \texttt{run\_self\_training(X\_train, y\_partial, X\_test, y\_test)}: Chạy Self-training Classifier sử dụng SVM (RBF) làm base estimator. Self-training iteratively gán pseudo-labels cho unlabeled data, retrain model. Trả về F1, PR-AUC, model và pseudo-labels.
+    \item \texttt{run\_label\_spreading(X\_train, y\_partial, X\_test, y\_test)}: Chạy Label Spreading. Phương pháp graph-based lan truyền nhãn qua similarity graph. Trả về tương tự self\_training.
+    \item \texttt{run\_supervised\_only(X\_train, y\_train, X\_test, y\_test, labeled\_mask)}: Baseline supervised -- chỉ train SVM trên phần có nhãn (không dùng unlabeled data). Dùng để so sánh fair với semi-supervised.
+    \item \texttt{learning\_curve\_by\_label\_ratio(...)}: Vòng lặp chính -- chạy supervised, self-training và label\_spreading ở 6 tỷ lệ nhãn (5\%--50\%). Tạo DataFrame learning curve để vẽ biểu đồ so sánh.
+    \item \texttt{analyze\_pseudo\_labels(y\_true, pseudo\_labels, labeled\_mask)}: Phân tích chất lượng pseudo-labels: tính accuracy trên phần unlabeled, đếm số pseudo-label sai, phân tích lỗi theo lớp.
+\end{itemize}
+
+\subsection{Module \texttt{src/evaluation/} -- Đánh giá và phân tích}
+
+Package \texttt{evaluation} cung cấp các công cụ đánh giá tập trung, đảm bảo tất cả metrics được tính nhất quán trong toàn dự án.
+
+\textbf{File \texttt{metrics.py}} ($\sim$262 dòng) chứa 5 hàm đánh giá:
+\begin{itemize}
+    \item \texttt{classification\_metrics(y\_true, y\_pred, y\_prob)}: Tính toàn bộ metrics phân lớp: accuracy, F1, precision, recall, ROC-AUC, PR-AUC, confusion matrix. Trả về dictionary để dễ dàng tabulate.
+    \item \texttt{regression\_metrics(y\_true, y\_pred)}: Tính MAE, RMSE, $R^2$ cho regression (dự phòng mở rộng).
+    \item \texttt{clustering\_metrics(X, labels)}: Tính Silhouette Score, Davies-Bouldin Index cho clustering.
+    \item \texttt{generate\_actionable\_insights(results, df)}: Hàm tạo $\geq$ 5 insight ``có hành động'' (actionable) từ kết quả mô hình: so sánh best/worst model, phân tích False Negative, đánh giá feature importance, đề xuất ứng dụng lâm sàng. Đây là hàm có giá trị cao nhất về mặt y khoa.
+    \item \texttt{analyze\_error\_patterns(X\_test, y\_test, y\_pred, ...)}: Phân tích chi tiết lỗi dự đoán theo nhóm: theo nhóm tuổi, giới tính, loại đau ngực. Xác định nhóm bệnh nhân mà mô hình dự đoán sai nhiều nhất, gợi ý hướng cải tiến.
+\end{itemize}
+
+\textbf{File \texttt{report.py}} tạo báo cáo tổng hợp tự động: kết hợp kết quả từ 5 giai đoạn (data, association rules, clustering, classification, semi-supervised), xuất ra file \texttt{summary\_report.txt} và các bảng CSV.
+
+\subsection{Module \texttt{src/visualization/} -- Trực quan hóa}
+
+\textbf{File \texttt{plots.py}} tập trung tất cả logic trực quan hóa vào một nơi, tạo ra 10 biểu đồ chính: target distribution, numeric distributions (histograms), correlation heatmap, missing values bar chart, features vs target (boxplots/violins), elbow/silhouette curves, cluster profiles (radar/bar), ROC curves (multi-model overlay), PR curves, confusion matrix (heatmap), model comparison (grouped bar chart). Tất cả biểu đồ sử dụng style nhất quán (font size, color palette, figure size) và tự động lưu vào \texttt{outputs/figures/}.
+
+\section{Kết nối giữa các module trong hệ thống}
+
+Các module được thiết kế theo nguyên tắc \textbf{separation of concerns} (phân tách mối quan tâm) -- mỗi module chỉ đảm nhiệm một chức năng cụ thể, giao tiếp với các module khác thông qua interface rõ ràng (input/output là DataFrame hoặc dictionary). Luồng dữ liệu trong hệ thống tuân theo pipeline tuần tự:
+
+\begin{enumerate}
+    \item \texttt{data/loader.py} đọc \texttt{heart.csv} $\rightarrow$ DataFrame gốc (920 $\times$ 16).
+    \item \texttt{data/cleaner.py} tiền xử lý: create binary target $\rightarrow$ handle missing $\rightarrow$ encode categorical $\rightarrow$ remove outliers $\rightarrow$ DataFrame sạch (920 $\times$ 14).
+    \item \texttt{features/builder.py} phân nhánh:
+    \begin{itemize}
+        \item Nhánh Apriori: \texttt{discretize\_for\_apriori()} $\rightarrow$ DataFrame binary (920 $\times$ $\sim$28).
+        \item Nhánh Classification: \texttt{select\_features\_for\_modeling()} $\rightarrow$ X (920 $\times$ 13), y (920 $\times$ 1).
+    \end{itemize}
+    \item Pipeline song song sau khi split train/test (80/20):
+    \begin{itemize}
+        \item \texttt{mining/association.py}: Apriori trên dữ liệu binary $\rightarrow$ 3.792 luật, Top 20 luật bệnh tim.
+        \item \texttt{mining/clustering.py}: KMeans/Hierarchical trên X đã scale $\rightarrow$ 4 cụm, profiles.
+        \item \texttt{models/supervised.py}: Train 6 mô hình trên X\_train $\rightarrow$ 6 bộ kết quả, best model.
+        \item \texttt{models/semi\_supervised.py}: Semi-supervised ở 6 tỷ lệ nhãn $\rightarrow$ learning curves.
+    \end{itemize}
+    \item \texttt{evaluation/metrics.py} nhận kết quả từ 4 nhánh, tính metrics thống nhất.
+    \item \texttt{visualization/plots.py} tạo 10 biểu đồ từ kết quả, lưu PNG.
+    \item \texttt{evaluation/report.py} tổng hợp tất cả vào báo cáo cuối.
+\end{enumerate}
+
+Tất cả tham số (random seed, đường dẫn, hyperparameters, tỷ lệ chia, chiến lược missing) được quản lý tập trung qua file \texttt{configs/params.yaml}. Khi cần thay đổi thử nghiệm (ví dụ: đổi min\_support Apriori từ 0.08 sang 0.10), chỉ cần sửa file YAML mà không cần sửa bất kỳ dòng code nào. Thiết kế này tuân theo nguyên tắc ``configuration as code'', giúp dự án dễ mở rộng và tái lập kết quả.
+
+\section{Ứng dụng demo Streamlit}
+
+Ngoài pipeline phân tích, nhóm đã xây dựng ứng dụng demo sử dụng framework \textbf{Streamlit} -- một thư viện Python cho phép tạo giao diện web interactive một cách nhanh chóng. File \texttt{app.py} cung cấp giao diện cho phép người dùng (bác sĩ, y tá, hoặc bệnh nhân) nhập thông tin lâm sàng và nhận kết quả dự đoán ngay lập tức.
+
+Ứng dụng hoạt động theo quy trình: (1) Load mô hình đã huấn luyện (\texttt{random\_forest.joblib}) và scaler từ thư mục \texttt{outputs/models/}; (2) Hiển thị form nhập liệu với 13 trường tương ứng 13 features, mỗi trường có giới hạn giá trị hợp lệ và tooltip giải thích ý nghĩa y khoa; (3) Khi người dùng nhấn ``Dự đoán'', ứng dụng encode, scale dữ liệu đầu vào bằng scaler đã lưu, sau đó gọi \texttt{model.predict\_proba()} để tính xác suất bệnh tim; (4) Hiển thị kết quả: xác suất (probability), mức nguy cơ (thấp/trung bình/cao) và các yếu tố nguy cơ nổi bật dựa trên input.
+
+Ứng dụng Streamlit có thể chạy local bằng lệnh \texttt{streamlit run app.py} và tự động mở trình duyệt web. Trong tương lai, ứng dụng có thể deploy lên Streamlit Cloud hoặc các nền tảng hosting khác để nhiều người truy cập đồng thời.
+
+\section{Nguyên tắc thiết kế mã nguồn}
+
+Trong quá trình phát triển, nhóm tuân theo một số nguyên tắc thiết kế phần mềm (software design principles) quan trọng để đảm bảo chất lượng mã nguồn:
+
+\textbf{Nguyên tắc 1 -- DRY (Don't Repeat Yourself):} Mỗi chức năng chỉ được cài đặt một lần duy nhất trong module tương ứng. Ví dụ: hàm \texttt{classification\_metrics()} trong \texttt{evaluation/metrics.py} được gọi bởi cả \texttt{supervised.py}, \texttt{semi\_supervised.py} và \texttt{report.py}. Nếu cần thay đổi cách tính metric, chỉ cần sửa một nơi duy nhất. Ngược lại, nếu mỗi module tự viết hàm tính metric riêng, sẽ dễ dẫn đến inconsistency và bug.
+
+\textbf{Nguyên tắc 2 -- Single Responsibility:} Mỗi module chỉ đảm nhiệm một chức năng cụ thể. Module \texttt{data/cleaner.py} chỉ xử lý tiền xử lý, không train model; module \texttt{models/supervised.py} chỉ train model, không tính metrics chi tiết; module \texttt{evaluation/metrics.py} chỉ tính metrics, không trực quan hóa. Phân tách rõ ràng giúp mỗi module nhỏ gọn, dễ hiểu và dễ test.
+
+\textbf{Nguyên tắc 3 -- Configuration over Hardcoding:} Tất cả ``magic numbers'' (con số cố định trong code) được chuyển ra file cấu hình \texttt{params.yaml}. Ví dụ: thay vì viết \texttt{min\_support=0.08} trực tiếp trong code, nhóm đọc giá trị từ file YAML: \texttt{params['apriori']['min\_support']}. Điều này cho phép thay đổi thử nghiệm mà không cần sửa code, giảm rủi ro introduce bug.
+
+\textbf{Nguyên tắc 4 -- Logging và Reproducibility:} Mỗi bước quan trọng in thông tin ra console: số lượng mẫu, số features, phân bố target, kết quả metric. Tất cả random operations sử dụng chung \texttt{random\_state = 42}. Kết quả được lưu ra file (CSV, TXT, PNG, joblib) để tham chiếu sau này.
+
+\section{Kiểm thử và xác minh (Testing and Verification)}
+
+Nhóm thực hiện kiểm thử hệ thống ở nhiều mức:
+
+\textbf{Unit testing:} Mỗi hàm trong \texttt{src/} được kiểm tra với input mẫu để đảm bảo output đúng format và giá trị hợp lý. Ví dụ: \texttt{create\_binary\_target()} phải trả về cột \texttt{target} chỉ chứa giá trị 0 hoặc 1; \texttt{handle\_missing\_values()} phải trả về DataFrame không có giá trị null.
+
+\textbf{Integration testing:} Chạy toàn bộ pipeline end-to-end bằng \texttt{scripts/run\_pipeline.py} để kiểm tra các module kết nối đúng: output của module tiền xử lý phải tương thích (size, columns) với input của module modeling.
+
+\textbf{Sanity checks:} Kiểm tra logic kết quả -- Dummy classifier phải có F1 $\approx$ 0 (trên lớp thiểu số) và FN Rate = 100\%; mô hình cải tiến phải outperform baseline; cross-validation F1 phải tương đồng (không lệch quá 5\%) so với hold-out test F1.
+
+\textbf{Reproducibility check:} Chạy pipeline 3 lần liên tiếp, xác nhận kết quả identically cùng giá trị (đến 4 chữ số thập phân), xác minh \texttt{random\_state = 42} hoạt động đúng.

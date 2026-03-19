@@ -1,0 +1,71 @@
+\begin{thebibliography}{10}
+
+\bibitem{agrawal1994fast}
+Rakesh Agrawal and Ramakrishnan Srikant.
+\newblock Fast algorithms for mining association rules.
+\newblock In {\em Proceedings of the 20th International Conference on Very
+  Large Data Bases (VLDB)}, pages 487--499, 1994.
+
+\bibitem{breiman2001random}
+Leo Breiman.
+\newblock Random forests.
+\newblock {\em Machine Learning}, 45(1):5--32, 2001.
+
+\bibitem{chapelle2006semi}
+Olivier Chapelle, Bernhard Schölkopf, and Alexander Zien.
+\newblock {\em Semi-Supervised Learning}.
+\newblock MIT Press, 2006.
+
+\bibitem{chawla2002smote}
+Nitesh~V. Chawla, Kevin~W. Bowyer, Lawrence~O. Hall, and W.~Philip Kegelmeyer.
+\newblock Smote: Synthetic minority over-sampling technique.
+\newblock {\em Journal of Artificial Intelligence Research}, 16:321--357, 2002.
+
+\bibitem{chen2016xgboost}
+Tianqi Chen and Carlos Guestrin.
+\newblock Xgboost: A scalable tree boosting system.
+\newblock In {\em Proceedings of the 22nd ACM SIGKDD International Conference
+  on Knowledge Discovery and Data Mining}, pages 785--794, 2016.
+
+\bibitem{cortes1995support}
+Corinna Cortes and Vladimir Vapnik.
+\newblock Support-vector networks.
+\newblock {\em Machine Learning}, 20:273--297, 1995.
+
+\bibitem{detrano1989international}
+Robert Detrano, Andras Janosi, Walter Steinbrunn, Matthias Pfisterer,
+  Johann-Jakob Schmid, Sarbjit Sandhu, Kern~H. Guppy, Stella Lee, and Victor
+  Froelicher.
+\newblock International application of a new probability algorithm for the
+  diagnosis of coronary artery disease.
+\newblock {\em The American Journal of Cardiology}, 64(5):304--310, 1989.
+
+\bibitem{uci_heart}
+Andras Janosi, William Steinbrunn, Matthias Pfisterer, and Robert Detrano.
+\newblock Heart disease data set.
+\newblock UCI Machine Learning Repository, 1988.
+
+\bibitem{lloyd1982least}
+Stuart~P. Lloyd.
+\newblock Least squares quantization in pcm.
+\newblock {\em IEEE Transactions on Information Theory}, 28(2):129--137, 1982.
+
+\bibitem{pedregosa2011scikit}
+Fabian Pedregosa, Gaël Varoquaux, Alexandre Gramfort, Vincent Michel, Bertrand
+  Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron Weiss,
+  Vincent Dubourg, et~al.
+\newblock Scikit-learn: Machine learning in python.
+\newblock {\em Journal of Machine Learning Research}, 12:2825--2830, 2011.
+
+\bibitem{who2021cvd}
+{World Health Organization}.
+\newblock Cardiovascular diseases (cvds) -- fact sheet.
+\newblock 2021.
+
+\bibitem{zhou2004learning}
+Dengyong Zhou, Olivier Bousquet, Thomas~N. Lal, Jason Weston, and Bernhard
+  Schölkopf.
+\newblock Learning with local and global consistency.
+\newblock {\em Advances in Neural Information Processing Systems}, 16, 2004.
+
+\end{thebibliography}

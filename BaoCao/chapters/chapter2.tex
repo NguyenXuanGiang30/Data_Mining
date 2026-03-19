@@ -1,0 +1,233 @@
+\chapter{Thiết kế giải pháp và quy trình khai phá dữ liệu}\label{chapter_pipeline}
+
+\section{Pipeline tổng thể của hệ thống}
+
+Quy trình khai phá dữ liệu của dự án được thiết kế theo mô hình pipeline tuần tự, một kiến trúc phổ biến trong các dự án Data Science. Pipeline bao gồm 6 giai đoạn chính, mỗi giai đoạn thực hiện một chức năng cụ thể và tạo ra đầu ra phục vụ cho giai đoạn tiếp theo. Bảng \ref{tab:pipeline_steps} mô tả chi tiết từng bước:
+
+\begin{table}[H]
+\centering
+\caption{Các bước trong pipeline khai phá dữ liệu.}
+\label{tab:pipeline_steps}
+\begin{tabular}{|c|l|p{5.5cm}|p{3.5cm}|}
+\hline
+\textbf{Bước} & \textbf{Giai đoạn} & \textbf{Mô tả chi tiết} & \textbf{Đầu ra} \\ \hline
+1 & Thu thập dữ liệu & Tải UCI Heart Disease Dataset (920 mẫu, 16 cột) từ file CSV & DataFrame gốc \\ \hline
+2 & Tiền xử lý & Xử lý missing values, outliers, encoding biến phân loại, tạo biến target nhị phân & DataFrame sạch \\ \hline
+3 & Xây dựng đặc trưng & Rời rạc hóa cho Apriori, chọn features cho Classification, chia train/test & Dữ liệu sẵn sàng cho modeling \\ \hline
+4 & Khai phá dữ liệu & Chạy Apriori (luật kết hợp), KMeans + Hierarchical (phân cụm), SVM/RF/XGBoost (phân lớp) & Luật, nhãn cụm, mô hình \\ \hline
+5 & Học bán giám sát & Self-training, Label Spreading với các tỷ lệ nhãn 5--50\% & Learning curves \\ \hline
+6 & Đánh giá tổng hợp & Tính metrics, so sánh mô hình, phân tích lỗi, tạo báo cáo & Bảng kết quả, biểu đồ \\ \hline
+\end{tabular}
+\end{table}
+
+Thiết kế pipeline có nhiều ưu điểm quan trọng trong dự án khai phá dữ liệu. Thứ nhất, tính \textbf{module hóa}: mỗi bước được cài đặt dưới dạng module Python riêng biệt trong thư mục \texttt{src/}, giúp dễ dàng bảo trì, cập nhật và tái sử dụng mã nguồn. Thứ hai, tính \textbf{tái lập} (reproducibility): toàn bộ tham số được quản lý tập trung qua file \texttt{configs/params.yaml} với \texttt{random\_state = 42}, đảm bảo kết quả có thể tái tạo chính xác. Thứ ba, \textbf{tự động hóa}: pipeline có thể chạy hoàn toàn tự động thông qua script \texttt{scripts/run\_pipeline.py}, hoặc thực hiện theo từng bước qua các notebook Jupyter trong thư mục \texttt{notebooks/} để phục vụ phân tích và trình diễn.
+
+\section{Các bước tiền xử lý dữ liệu}
+
+Tiền xử lý dữ liệu (Data Preprocessing) là giai đoạn then chốt quyết định chất lượng mô hình. Nguyên tắc chung là ``Garbage in, garbage out'' -- nếu dữ liệu đầu vào có chất lượng kém, mô hình sẽ cho kết quả thiếu tin cậy bất kể thuật toán tốt đến đâu. Nhóm thực hiện 5 bước tiền xử lý tuần tự:
+
+\subsection{Loại bỏ cột không cần thiết}
+
+Bước đầu tiên là loại bỏ hai cột không mang ý nghĩa dự đoán: \texttt{id} (mã định danh bệnh nhân, chỉ là số thứ tự) và \texttt{dataset} (tên trung tâm y tế thu thập dữ liệu). Cột \texttt{dataset} mặc dù có thể chứa thông tin về bias giữa các nguồn, nhưng không nên được sử dụng làm feature vì nó không phản ánh đặc điểm lâm sàng của bệnh nhân. Trong thực tế triển khai, mô hình cần dự đoán cho bệnh nhân mới không thuộc bất kỳ nguồn dữ liệu nào trong tập huấn luyện.
+
+\subsection{Xử lý missing values}
+
+Dữ liệu gốc có tổng cộng 1.759 giá trị thiếu, phân bố không đều giữa các cột (như phân tích ở Chương 1). Nhóm xem xét ba chiến lược xử lý missing values và phân tích ưu điểm, nhược điểm của từng phương pháp:
+
+\textbf{Chiến lược 1: Drop cột có tỷ lệ missing cao (drop\_high\_missing).} Loại bỏ các cột có tỷ lệ thiếu vượt ngưỡng (ví dụ $>$ 40\%). Ưu điểm: đơn giản, không thêm noise. Nhược điểm: mất đi thông tin quan trọng từ \texttt{ca} và \texttt{thal} -- hai features có giá trị y khoa cao.
+
+\textbf{Chiến lược 2: Fill tất cả (fill\_all).} Điền giá trị missing bằng thống kê mô tả. Ưu điểm: giữ được tất cả features. Nhược điểm: giá trị fill có thể không phản ánh đúng thực tế của bệnh nhân.
+
+\textbf{Chiến lược 3: Drop hàng có missing (drop\_rows).} Loại bỏ các bệnh nhân có bất kỳ giá trị missing nào. Ưu điểm: dữ liệu hoàn toàn ``sạch''. Nhược điểm: mất rất nhiều mẫu (có thể giảm từ 920 xuống dưới 300 mẫu).
+
+Sau khi cân nhắc, nhóm chọn \textbf{Chiến lược 2 (fill\_all)} vì đảm bảo giữ nguyên kích thước mẫu (920 bệnh nhân) và bảo toàn tất cả 13 features. Quy tắc fill cụ thể:
+\begin{itemize}
+    \item \textbf{Biến số liên tục} (\texttt{trestbps}, \texttt{chol}, \texttt{thalch}, \texttt{oldpeak}, \texttt{ca}): điền bằng giá trị \textbf{trung vị (median)}. Trung vị được chọn thay vì trung bình (mean) vì ít bị ảnh hưởng bởi giá trị ngoại lai. Ví dụ: nếu cholesterol có một số mẫu $>$ 500 mg/dl, mean sẽ bị kéo lên cao bất thường, trong khi median vẫn phản ánh giá trị trung tâm hợp lý.
+    \item \textbf{Biến phân loại} (\texttt{fbs}, \texttt{restecg}, \texttt{exang}, \texttt{slope}, \texttt{thal}): điền bằng giá trị \textbf{mode} (giá trị xuất hiện nhiều nhất). Đây là phương pháp đơn giản nhất cho biến categorical, giả định rằng giá trị phổ biến nhất là ước lượng tốt nhất khi không có thông tin cụ thể.
+\end{itemize}
+
+\subsection{Xử lý outliers (ngoại lai)}
+
+Giá trị ngoại lai (outliers) là những quan sát nằm xa phần lớn dữ liệu, có thể do lỗi đo lường, lỗi nhập liệu hoặc phản ánh tình trạng bệnh lý đặc biệt. Nhóm sử dụng phương pháp \textbf{IQR (Interquartile Range)} -- một kỹ thuật phát hiện outliers phi tham số, robust với phân bố dữ liệu bất kỳ.
+
+Quy trình xử lý outliers bằng IQR gồm 4 bước:
+\begin{enumerate}
+    \item Tính phân vị thứ nhất $Q_1$ (25\%) và phân vị thứ ba $Q_3$ (75\%) cho mỗi biến số liên tục.
+    \item Tính range liên phân vị: $IQR = Q_3 - Q_1$.
+    \item Xác định ngưỡng dưới $L = Q_1 - 1.5 \times IQR$ và ngưỡng trên $U = Q_3 + 1.5 \times IQR$. Giá trị ngoại lai là những quan sát $< L$ hoặc $> U$.
+    \item \textbf{Xử lý:} Thay vì loại bỏ hàng (mất dữ liệu), nhóm áp dụng phương pháp \textbf{cắt (clipping)}: các giá trị $< L$ được gán bằng $L$, các giá trị $> U$ được gán bằng $U$. Phương pháp này giữ nguyên kích thước mẫu và vẫn giữ lại thông tin rằng bệnh nhân có giá trị ``cực đoan''.
+\end{enumerate}
+
+Hệ số 1.5 là giá trị tiêu chuẩn trong thống kê, được John Tukey đề xuất. Với dữ liệu phân bố chuẩn, ngưỡng này tương đương khoảng 2.7 lần độ lệch chuẩn, loại bỏ khoảng 0.7\% quan sát cực trị ở mỗi phía.
+
+\subsection{Encoding dữ liệu categorical}
+
+Các thuật toán Machine Learning yêu cầu đầu vào dạng số, do đó các biến phân loại (categorical) cần được mã hóa (encoding). Nhóm xem xét hai phương pháp encoding phổ biến:
+
+\textbf{Label Encoding:} Gán mỗi giá trị categorical một số nguyên. Ví dụ: \texttt{cp} với 4 giá trị $\rightarrow$ \{0, 1, 2, 3\}. Ưu điểm: giữ nguyên số chiều dữ liệu, đơn giản, nhanh. Nhược điểm: tạo ra thứ tự giả (ordinal relationship) giữa các giá trị, có thể gây hiểu sai cho một số thuật toán.
+
+\textbf{One-hot Encoding:} Tạo một cột binary cho mỗi giá trị categorical. Ví dụ: \texttt{cp} với 4 giá trị $\rightarrow$ 4 cột binary (cp\_typical, cp\_atypical, cp\_nonanginal, cp\_asymptomatic). Ưu điểm: không tạo thứ tự giả. Nhược điểm: tăng đáng kể số chiều dữ liệu, đặc biệt khi biến có nhiều giá trị.
+
+Nhóm chọn \textbf{Label Encoding} vì tập dữ liệu có kích thước trung bình (920 mẫu). Với One-hot Encoding, số features có thể tăng từ 13 lên 25--30 cột, dẫn đến curse of dimensionality khi số mẫu không đủ lớn. Hơn nữa, các thuật toán tree-based (Random Forest, XGBoost) xử lý tốt Label Encoding vì chúng tách (split) trên từng giá trị cụ thể, không bị ảnh hưởng bởi thứ tự giả.
+
+Bảy biến categorical được encode: \texttt{sex}, \texttt{cp}, \texttt{fbs}, \texttt{restecg}, \texttt{exang}, \texttt{slope}, \texttt{thal}. Mapping encode được lưu lại để phục vụ diễn giải kết quả.
+
+\subsection{Chuẩn hóa dữ liệu (Normalization / Scaling)}
+
+Các biến số liên tục trong dữ liệu có đơn vị và khoảng giá trị rất khác nhau: tuổi (29--77 năm), huyết áp (94--200 mmHg), cholesterol (85--564 mg/dl), nhịp tim (71--202 bpm), oldpeak (0.0--6.2). Sự chênh lệch scale này ảnh hưởng đến các thuật toán sử dụng khoảng cách hoặc gradient.
+
+\textbf{StandardScaler} được sử dụng để chuẩn hóa dữ liệu về phân bố chuẩn tắc (mean = 0, standard deviation = 1). Công thức chuyển đổi:
+\[
+z = \frac{x - \mu}{\sigma}
+\]
+trong đó $x$ là giá trị gốc, $\mu$ là trung bình và $\sigma$ là độ lệch chuẩn của cột tương ứng (tính trên tập train).
+
+StandardScaler đặc biệt quan trọng cho:
+\begin{itemize}
+    \item \textbf{SVM:} Thuật toán SVM tối ưu hóa margin giữa các support vectors, nhạy cảm với scale. Nếu không scale, biến có range lớn (cholesterol) sẽ dominate biến có range nhỏ (oldpeak).
+    \item \textbf{KMeans Clustering:} Sử dụng khoảng cách Euclidean để gán cụm. Nếu không scale, cụm sẽ bị chi phối bởi biến có range lớn nhất.
+    \item \textbf{Logistic Regression:} Gradient descent hội tụ nhanh hơn khi các features ở cùng scale.
+\end{itemize}
+
+Random Forest và XGBoost ít nhạy cảm với scaling (vì sử dụng quyết định split), nhưng để đồng nhất và công bằng khi so sánh, tất cả mô hình đều nhận dữ liệu đã scale.
+
+\textbf{Quy tắc chống data leakage:} Scaling được thực hiện \textbf{sau khi chia train/test}. Scaler được \texttt{fit()} trên tập train (học $\mu$ và $\sigma$), sau đó \texttt{transform()} trên cả tập train lẫn test. Điều này ngăn thông tin thống kê từ tập test ``rò rỉ'' vào quá trình training.
+
+\subsection{Tạo biến mục tiêu nhị phân}
+
+Cột \texttt{num} gốc có 5 mức: 0 (không bệnh), 1, 2, 3, 4 (các mức độ bệnh tim khác nhau, từ nhẹ đến nặng). Nhóm chuyển đổi thành biến nhị phân \texttt{target}:
+\begin{itemize}
+    \item $num = 0 \rightarrow target = 0$ (không bệnh tim)
+    \item $num \in \{1, 2, 3, 4\} \rightarrow target = 1$ (có bệnh tim)
+\end{itemize}
+
+Lý do chọn binary thay vì multi-class: bài toán sàng lọc ban đầu cần trả lời câu hỏi ``có/không bệnh tim'', không cần phân biệt mức độ. Hơn nữa, phân bố các mức 1--4 rất mất cân bằng, gây khó khăn cho mô hình multi-class trên tập dữ liệu nhỏ.
+
+\section{Xây dựng và lựa chọn đặc trưng (Feature Engineering)}
+
+Feature Engineering là quá trình tạo ra hoặc biến đổi các đặc trưng để cải thiện hiệu quả mô hình. Trong dự án này, nhóm thực hiện hai hướng Feature Engineering khác nhau cho hai mục đích: rời rạc hóa phục vụ thuật toán Apriori, và chọn features phục vụ mô hình phân lớp.
+
+\subsection{Rời rạc hóa cho thuật toán Apriori}
+
+Thuật toán Apriori yêu cầu đầu vào dạng giao dịch nhị phân (transaction: mỗi bản ghi là tập hợp các items xuất hiện/không xuất hiện). Do đó, tất cả biến liên tục và phân loại cần được chuyển đổi thành dạng binary (0/1). Nhóm thực hiện rời rạc hóa (discretization) dựa trên \textbf{ngưỡng y khoa} (medical thresholds) -- các giá trị phân loại được công nhận trong y văn:
+
+\begin{table}[H]
+\centering
+\caption{Quy tắc rời rạc hóa các biến liên tục theo ngưỡng y khoa.}
+\label{tab:discretization}
+\small
+\begin{tabular}{|l|l|p{4.5cm}|p{3cm}|}
+\hline
+\textbf{Biến gốc} & \textbf{Biến binary} & \textbf{Ngưỡng} & \textbf{Cơ sở y khoa} \\ \hline
+\texttt{age} & \texttt{age\_young}, \texttt{age\_middle}, \texttt{age\_senior}, \texttt{age\_elderly} & $<$40, 40--54, 55--64, $\geq$65 (tuổi) & Nhóm tuổi theo nguy cơ tim mạch \\ \hline
+\texttt{trestbps} & \texttt{bp\_normal}, \texttt{bp\_elevated}, \texttt{bp\_high} & $<$120, 120--139, $\geq$140 (mmHg) & Phân loại huyết áp WHO \\ \hline
+\texttt{chol} & \texttt{chol\_normal}, \texttt{chol\_borderline}, \texttt{chol\_high} & $<$200, 200--239, $\geq$240 (mg/dl) & Tiêu chuẩn ATP III \\ \hline
+\texttt{thalch} & \texttt{hr\_low}, \texttt{hr\_normal}, \texttt{hr\_high} & $<$120, 120--159, $\geq$160 (bpm) & Ngưỡng lâm sàng \\ \hline
+\texttt{oldpeak} & \texttt{oldpeak\_zero}, \texttt{oldpeak\_low}, \texttt{oldpeak\_high} & $=0$, $0$--$2$, $\geq 2$ (mm) & ST depression $\geq$2mm có ý nghĩa bệnh lý \\ \hline
+\texttt{ca} & \texttt{ca\_zero}, \texttt{ca\_positive} & $= 0$, $> 0$ & Mạch nhuộm fluoroscopy \\ \hline
+\end{tabular}
+\end{table}
+
+Việc sử dụng ngưỡng y khoa thay vì ngưỡng thống kê (quantile-based) có hai ưu điểm quan trọng. Thứ nhất, kết quả luật kết hợp có thể diễn giải trực tiếp trong ngữ cảnh y tế (ví dụ: ``cholesterol\_high'' dễ hiểu hơn ``cholesterol\_Q4''). Thứ hai, ngưỡng không phụ thuộc vào phân bố của tập dữ liệu cụ thể, tăng tính tổng quát hóa. Các biến phân loại gốc (\texttt{sex}, \texttt{cp}, \texttt{fbs}, \texttt{restecg}, \texttt{exang}, \texttt{slope}, \texttt{thal}) cũng được chuyển đổi tương tự thành dạng binary, tạo ra tổng cộng khoảng 25--30 biến binary cho Apriori.
+
+\subsection{Lựa chọn đặc trưng cho mô hình phân lớp}
+
+Đối với các mô hình phân lớp (SVM, Random Forest, XGBoost), nhóm sử dụng tất cả 13 features sau khi loại bỏ cột \texttt{id} và \texttt{dataset}. Quyết định giữ toàn bộ features (thay vì feature selection) dựa trên hai lý do: (1) số chiều hiện tại (13) không quá cao so với số mẫu (920), chưa gặp curse of dimensionality; (2) Random Forest và XGBoost có cơ chế feature importance nội tại, tự ``chọn'' features quan trọng trong quá trình training mà không cần loại bỏ thủ công.
+
+Hàm \texttt{select\_features\_for\_modeling()} chuẩn bị dữ liệu bằng cách tách DataFrame thành ma trận đặc trưng $X$ (13 cột) và vector nhãn $y$ (cột \texttt{target}).
+
+\section{Lựa chọn mô hình và thuật toán}
+
+\subsection{Luật kết hợp -- Thuật toán Apriori}
+
+Thuật toán \textbf{Apriori} \cite{agrawal1994fast} là một trong những thuật toán kinh điển nhất trong khai phá dữ liệu, được thiết kế để tìm frequent itemsets (tập mẫu phổ biến) và sinh luật kết hợp (association rules) từ dữ liệu giao dịch. Thuật toán hoạt động theo nguyên lý ``anti-monotone'': nếu một tập mẫu không phổ biến (support $<$ min\_support), thì tất cả các tập mẫu chứa nó cũng không phổ biến. Nguyên lý này giúp cắt tỉa (pruning) không gian tìm kiếm hiệu quả.
+
+Tham số cấu hình được chọn sau quá trình thử nghiệm:
+\begin{itemize}
+    \item \texttt{min\_support} = 0.08: Tập mẫu phải xuất hiện trong ít nhất 8\% dataset ($\approx$ 74 bệnh nhân). Ngưỡng này đủ thấp để tìm được các tổ hợp triệu chứng hiếm nhưng quan trọng, đồng thời đủ cao để loại bỏ các tổ hợp quá hiếm không có ý nghĩa thống kê.
+    \item \texttt{min\_confidence} = 0.50: Ít nhất 50\% trường hợp thỏa mãn điều kiện thì kết luận đúng. Trong y tế, confidence $>$ 0.80 được coi là luật mạnh.
+    \item \texttt{min\_lift} = 1.2: Nguy cơ cao hơn ít nhất 1.2 lần so với ngẫu nhiên. Lift = 1.0 nghĩa là không có mối liên hệ; lift $>$ 1.0 cho thấy tương quan dương.
+\end{itemize}
+
+\subsection{Phân cụm -- KMeans và Hierarchical Clustering}
+
+Hai thuật toán phân cụm được triển khai để cung cấp cái nhìn bổ sung cho nhau:
+
+\textbf{KMeans} \cite{lloyd1982least} là thuật toán phân cụm dựa trên prototype, chia $n$ điểm dữ liệu thành $k$ cụm bằng cách tối thiểu hóa tổng khoảng cách Euclidean bình phương từ mỗi điểm đến centroid cụm gần nhất. Nhóm xác định số cụm tối ưu bằng hai phương pháp bổ sung: (1) \textbf{Elbow method}: vẽ đồ thị inertia (tổng khoảng cách trong cụm) theo $k$, tìm điểm ``khuỷu tay'' nơi tốc độ giảm inertia chậm lại đáng kể; (2) \textbf{Silhouette Score}: đánh giá mức độ tách biệt giữa các cụm, chọn $k$ có Silhouette Score cao nhất. Tham số \texttt{n\_init = 10} được sử dụng để chạy KMeans 10 lần với các centroid khởi tạo ngẫu nhiên khác nhau, chọn kết quả tốt nhất.
+
+\textbf{Hierarchical Clustering (Agglomerative)} xây dựng cây phân cấp (dendrogram) bằng cách gộp hai cụm gần nhất tại mỗi bước. Phương pháp linkage \textbf{Ward} được chọn vì tối thiểu hóa tổng variance nội cụm, thường cho kết quả compact và cân bằng nhất. So với KMeans, Hierarchical Clustering cung cấp thông tin về cấu trúc phân cấp của dữ liệu, giúp hiểu mối quan hệ giữa các nhóm bệnh nhân ở nhiều mức granularity khác nhau.
+
+\subsection{Phân lớp -- SVM, Random Forest, XGBoost}
+
+Nhóm triển khai 6 mô hình phân lớp (2 baseline + 4 cải tiến), đảm bảo đánh giá công bằng và toàn diện:
+
+\begin{table}[H]
+\centering
+\caption{Các mô hình phân lớp và tham số chính cùng lý do lựa chọn.}
+\label{tab:models}
+\small
+\begin{tabular}{|l|p{5cm}|p{5cm}|}
+\hline
+\textbf{Mô hình} & \textbf{Tham số chính} & \textbf{Lý do lựa chọn} \\ \hline
+Baseline (Dummy) & strategy = most\_frequent & Đường cơ sở, dự đoán lớp đa số \\ \hline
+Baseline (Logistic) & max\_iter=1000, class\_weight=balanced & Baseline mạnh, nhanh, dễ diễn giải \\ \hline
+SVM (linear) \cite{cortes1995support} & kernel=linear, probability=True, class\_weight=balanced & Xử lý high-dimensional data, margin tối ưu \\ \hline
+SVM (RBF) \cite{cortes1995support} & kernel=rbf, probability=True, class\_weight=balanced & Xử lý non-linearly separable data qua kernel trick \\ \hline
+Random Forest \cite{breiman2001random} & n\_estimators=200, max\_depth=10, class\_weight=balanced & Ensemble bagging, robust với noise và outliers \\ \hline
+XGBoost \cite{chen2016xgboost} & n\_estimators=200, max\_depth=5, learning\_rate=0.1, eval\_metric=logloss & State-of-the-art gradient boosting cho tabular data \\ \hline
+\end{tabular}
+\end{table}
+
+Tham số \texttt{class\_weight=balanced} (SVM, RF, Logistic) tự động điều chỉnh trọng số mất mát cho mỗi lớp theo tỷ lệ nghịch với số mẫu. Với dữ liệu 55:45, lớp thiểu số (không bệnh) được tăng trọng số, giúp mô hình chú ý hơn đến lớp này. SMOTE (Synthetic Minority Over-sampling Technique) \cite{chawla2002smote} được áp dụng bổ sung trên tập train, tạo mẫu tổng hợp cho lớp thiểu số bằng cách interpolation giữa các mẫu gần nhau trong không gian đặc trưng.
+
+\subsection{Học bán giám sát -- Self-training và Label Spreading}
+
+Trong thực tế y tế, dữ liệu có nhãn chẩn đoán thường đắt đỏ (cần bác sĩ chuyên khoa xác nhận) trong khi dữ liệu chưa gán nhãn rất phong phú. Học bán giám sát \cite{chapelle2006semi} khai thác cả dữ liệu có nhãn lẫn không nhãn để cải thiện mô hình.
+
+\textbf{Self-training} là phương pháp wrapper đơn giản: (1) Train mô hình cơ sở (SVM) trên dữ liệu có nhãn; (2) Dùng mô hình dự đoán nhãn (pseudo-labels) cho dữ liệu chưa gán nhãn; (3) Chọn các pseudo-labels có confidence cao ($>$ ngưỡng), thêm vào tập train; (4) Lặp lại cho đến khi hội tụ. Ưu điểm: đơn giản, có thể dùng với bất kỳ classifier nào.
+
+\textbf{Label Spreading} \cite{zhou2004learning} là phương pháp graph-based: xây dựng đồ thị similarity giữa các mẫu, sau đó lan truyền nhãn từ labeled nodes sang unlabeled nodes dựa trên trọng số cạnh. Phương pháp này mạnh khi dữ liệu có cấu trúc manifold rõ ràng.
+
+Nhóm thử nghiệm với 6 tỷ lệ nhãn: 5\%, 10\%, 15\%, 20\%, 30\%, 50\%. Ở mỗi tỷ lệ, chỉ giữ lại $r\%$ nhãn gốc (chọn ngẫu nhiên, stratified), phần còn lại đặt nhãn = $-1$ (unlabeled). So sánh kết quả với supervised learning (chỉ train trên phần có nhãn) để đánh giá giá trị gia tăng của semi-supervised.
+
+\section{Quy trình chia dữ liệu và cân bằng lớp}
+
+\subsection{Chiến lược chia dữ liệu (Data Splitting)}
+
+Chia dữ liệu là bước cực kỳ quan trọng trong Machine Learning, ảnh hưởng trực tiếp đến tính khách quan của đánh giá mô hình. Nhóm sử dụng chiến lược \textbf{Stratified Train/Test Split} với tỷ lệ 80/20, nghĩa là 80\% dữ liệu dùng để huấn luyện và 20\% còn lại dùng để đánh giá. Tham số \texttt{random\_state = 42} được sử dụng nhất quán trong toàn bộ dự án.
+
+Phương pháp ``Stratified'' đảm bảo rằng tỷ lệ lớp mục tiêu (55\% bệnh vs 45\% không bệnh) được duy trì chính xác trong cả tập train (736 mẫu) và tập test (184 mẫu). Nếu sử dụng random split thông thường (không stratified), với tập dữ liệu chỉ 920 mẫu, tập test có thể bị lệch đáng kể -- ví dụ 60:40 thay vì 55:45 -- dẫn đến kết quả đánh giá thiên vị. Stratified split loại bỏ hoàn toàn nguồn sai số này.
+
+Một nguyên tắc quan trọng được tuân thủ nghiêm ngặt: \textbf{tập test là ``holy'' -- không bao giờ được sử dụng trong quá trình training}. Cụ thể:
+\begin{itemize}
+    \item StandardScaler chỉ \texttt{fit()} trên tập train, sau đó \texttt{transform()} trên cả train và test. Nghĩa là $\mu$ và $\sigma$ được tính từ 736 mẫu train, không phải 920 mẫu.
+    \item SMOTE chỉ tạo mẫu tổng hợp trên tập train. Mẫu synthetic không ảnh hưởng đến tập test.
+    \item Feature selection, hyperparameter tuning (nếu có) chỉ dựa trên cross-validation trong tập train.
+\end{itemize}
+
+Việc vi phạm các nguyên tắc này sẽ dẫn đến \textbf{data leakage} -- một lỗi phổ biến nhưng nghiêm trọng trong Machine Learning, khiến mô hình ``gian lận'' bằng cách sử dụng thông tin từ tập test, tạo ra kết quả đánh giá lạc quan giả tạo (optimistic bias). Trong thực tế triển khai, mô hình sẽ thất bại khi gặp dữ liệu mới chưa từng thấy.
+
+\subsection{Kỹ thuật SMOTE (Synthetic Minority Over-sampling)}
+
+SMOTE \cite{chawla2002smote} là kỹ thuật cân bằng lớp phổ biến nhất trong Machine Learning, được thiết kế để xử lý vấn đề dữ liệu mất cân bằng. Trong bài toán dự đoán bệnh tim, tỷ lệ mất cân bằng 55:45 không quá nghiêm trọng, nhưng nhóm vẫn áp dụng SMOTE vì hai lý do: (1) cải thiện Recall cho lớp thiểu số, giảm False Negative -- quan trọng trong y tế; (2) giúp mô hình học decision boundary cân bằng hơn.
+
+Quy trình hoạt động của SMOTE:
+\begin{enumerate}
+    \item Chọn một mẫu từ lớp thiểu số (minority class).
+    \item Tìm $k$ nearest neighbors ($k = 5$ mặc định) của mẫu đó trong không gian đặc trưng, chỉ xét các mẫu cùng lớp thiểu số.
+    \item Chọn ngẫu nhiên một trong $k$ neighbors.
+    \item Tạo mẫu tổng hợp (synthetic sample) bằng phép nội suy (interpolation) tuyến tính: $x_{new} = x_{i} + \lambda \cdot (x_{nn} - x_{i})$, trong đó $\lambda \sim U(0,1)$.
+    \item Lặp lại cho đến khi hai lớp cân bằng.
+\end{enumerate}
+
+Ưu điểm của SMOTE so với random oversampling (nhân bản mẫu): SMOTE tạo ra mẫu ``mới'' nằm giữa các mẫu thật, mở rộng vùng quyết định của lớp thiểu số mà không chỉ đơn thuần nhân bản (tránh overfitting trên cùng một mẫu lặp lại nhiều lần). Tuy nhiên, cần lưu ý rằng mẫu synthetic là ``nhân tạo'' -- không phải bệnh nhân thật -- nên có thể tạo ra mẫu ở vùng decision boundary không realistic.
+
+\subsection{Tóm tắt luồng dữ liệu tổng thể}
+
+Để cung cấp cái nhìn tổng hợp, luồng dữ liệu từ đầu đến cuối pipeline được tóm tắt:
+
+$$\text{Raw CSV (920 $\times$ 16)} \xrightarrow{\text{drop id, dataset}} \text{(920 $\times$ 14)} \xrightarrow{\text{fill missing}} \text{(920 $\times$ 14, no null)}$$
+$$\xrightarrow{\text{encode + outlier + binary target}} \text{Clean (920 $\times$ 14)} \xrightarrow{\text{split 80/20}} \text{Train (736) + Test (184)}$$
+$$\text{Train} \xrightarrow{\text{scale + SMOTE}} \text{Train\_ready} \xrightarrow{\text{6 models}} \text{Predictions + Metrics}$$
+
+Song song với pipeline phân lớp, nhánh Apriori hoạt động trên dữ liệu đã rời rạc hóa (before split), và nhánh phân cụm hoạt động trên dữ liệu đã scale (toàn bộ 920 mẫu). Nhánh semi-supervised hoạt động trên Train\_ready với các tỷ lệ nhãn khác nhau.

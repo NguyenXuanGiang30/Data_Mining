@@ -1,0 +1,55 @@
+\input{styles/settings}
+% Bìa báo cáo
+
+\thesislayout
+
+\begin{document}
+% Add cover page to the document (defined in 'styles/thesis.sty')
+\coverpage
+
+% The \frontmatter command makes the pages numbered in lowercase roman, and makes chapters not numbered
+\frontmatter
+
+\newpage
+
+% Lời cảm ơn
+\begin{acknowledgments}
+
+Chúng tôi xin gửi lời cảm ơn chân thành đến ThS. Lê Thị Thùy Trang -- giảng viên hướng dẫn học phần ``Dữ liệu lớn, Khai phá dữ liệu'' -- đã tận tình giảng dạy, truyền đạt kiến thức và định hướng chuyên môn trong suốt quá trình học tập. Nhờ sự hướng dẫn nhiệt tình của cô, nhóm chúng tôi đã có nền tảng vững chắc để thực hiện bài tập lớn này.
+
+Chúng tôi cũng xin cảm ơn Trường Đại học Đại Nam, đặc biệt là Khoa Công nghệ Thông tin, đã tạo điều kiện thuận lợi về cơ sở vật chất và môi trường học tập để chúng tôi có thể hoàn thành báo cáo.
+
+Cuối cùng, chúng tôi xin gửi lời cảm ơn đến gia đình, bạn bè và các thành viên trong nhóm đã luôn hỗ trợ, động viên trong suốt quá trình thực hiện đề tài.
+
+Mặc dù đã cố gắng hết sức, báo cáo khó tránh khỏi những thiếu sót. Nhóm rất mong nhận được sự góp ý, nhận xét từ cô và bạn đọc để hoàn thiện hơn.
+
+\end{acknowledgments}
+
+% Bảng mục lục
+\tableofcontents
+% Danh mục bảng
+\listoftables
+% Danh mục hình
+\listoffigures
+
+\mainmatter
+\fancyhead{}  % Clears all page headers and footers
+\renewcommand{\footrulewidth}{0.4pt}
+\pagestyle{fancy} 
+\renewcommand{\chaptermark}[1]{\markboth{#1}{#1}}
+\fancyhead[R]{\chaptername\ \thechapter\ --\ \leftmark}
+
+\input{chapters/loi-noi-dau}
+\input{chapters/chapter1}
+\input{chapters/chapter2}
+\input{chapters/chapter3}
+\input{chapters/chapter4}
+\input{chapters/chapter5}
+\input{chapters/chapter6}
+
+% Tài liệu tham khảo
+\bibliographystyle{plain} 
+\bibliography{refs}
+
+% Kết thúc
+\end{document}

@@ -1,0 +1,142 @@
+\chapter{Thảo luận và so sánh}\label{chapter_discussion}
+
+\section{So sánh tổng thể giữa các phương pháp phân lớp}
+
+\subsection{Phân tích ưu điểm và hạn chế}
+
+Qua quá trình thử nghiệm với 6 mô hình phân lớp, nhóm đã thu thập một lượng lớn dữ liệu đánh giá từ nhiều góc độ: hold-out test, cross-validation, phân tích False Negative và đường cong ROC/PR. Bảng \ref{tab:pros_cons} tổng hợp ưu điểm và hạn chế cụ thể của từng phương pháp dựa trên kết quả thực nghiệm:
+
+\begin{table}[H]
+\centering
+\caption{So sánh chi tiết ưu điểm và hạn chế của các mô hình trên tập dữ liệu Heart Disease.}
+\label{tab:pros_cons}
+\small
+\begin{tabular}{|l|p{5cm}|p{5cm}|}
+\hline
+\textbf{Mô hình} & \textbf{Ưu điểm thực nghiệm} & \textbf{Hạn chế thực nghiệm} \\ \hline
+SVM (RBF) & CV ổn định nhất (Std = 0.0248), F1 cao (0.8599), PR-AUC rất tốt (0.9196) & Khó diễn giải (black-box), chậm khi data lớn, nhạy cảm với scale \\ \hline
+Random Forest & PR-AUC cao nhất (0.9313), ROC-AUC cao nhất (0.9206), FN Rate thấp (11.76\%), cung cấp feature importance & Chiếm nhiều bộ nhớ (model 3.5MB), 200 cây $\rightarrow$ inference chậm hơn SVM \\ \hline
+XGBoost & F1 cao nhất (0.8738), FN Rate thấp nhất (11.76\%), gradient boosting tiên tiến & CV variance cao nhất (Std = 0.0332), cần tuning nhiều hyperparameters, PR-AUC thấp hơn RF \\ \hline
+SVM (linear) & Đơn giản, nhanh, decision boundary tuyến tính dễ hiểu & F1 và PR-AUC thấp hơn, FN Rate cao (16.67\%), không capture được non-linear patterns \\ \hline
+Logistic Regression & Baseline rất mạnh, cực kỳ nhanh, diễn giải tốt nhất (coefficients), ổn định (Std = 0.0199) & F1 thấp nhất trong nhóm cải tiến (0.8235), FN Rate cao nhất (17.65\%) \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Giải thích vì sao Random Forest và XGBoost vượt trội}
+
+\textbf{Random Forest đạt PR-AUC cao nhất (0.9313):} Kết quả này được giải thích bởi cơ chế \textbf{bagging} (Bootstrap Aggregating) của Random Forest. Thuật toán xây dựng 200 cây quyết định độc lập, mỗi cây được huấn luyện trên một tập con dữ liệu bootstrap (lấy mẫu có hoàn lại) và chỉ sử dụng một tập con features ngẫu nhiên ở mỗi node split. Cơ chế này mang lại nhiều lợi ích cho bài toán dự đoán bệnh tim.
+
+Thứ nhất, \textbf{giảm variance} (overfitting): mỗi cây đơn lẻ có thể overfitting, nhưng khi kết hợp 200 cây qua majority vote, các lỗi ngẫu nhiên triệt tiêu lẫn nhau, tạo ra decision boundary mượt mà hơn. Thứ hai, \textbf{robust với missing values đã fill}: vì mỗi cây chỉ sử dụng subset features, ảnh hưởng của các features có nhiều giá trị fill (như \texttt{ca}, \texttt{thal}) được ``phân tán'' -- một số cây sẽ không sử dụng các features này và vẫn cho kết quả tốt. Thứ ba, \textbf{robust với outliers}: cây quyết định tách dữ liệu theo ngưỡng, không bị ảnh hưởng bởi giá trị cực đoan như SVM hay Logistic Regression.
+
+\textbf{XGBoost đạt F1-Score cao nhất (0.8738):} XGBoost sử dụng cơ chế \textbf{gradient boosting} -- xây dựng cây quyết định tuần tự, mỗi cây mới tập trung sửa lỗi (residuals) của hệ thống cây trước đó. Cơ chế này tối ưu hóa trực tiếp hàm mất mát (loss function), giảm cả bias và variance một cách có kiểm soát. Tham số \texttt{max\_depth = 5} (giới hạn độ sâu cây) và \texttt{learning\_rate = 0.1} (tốc độ học chậm) đóng vai trò regularization, ngăn mô hình learning quá nhiều từ noise. Tuy nhiên, Std F1 cao trong CV (0.0332) cho thấy XGBoost nhạy cảm hơn với cách chia dữ liệu -- có thể do gradient boosting ``nhớ'' các mẫu khó (hard examples), gây ra variance khi các mẫu này phân bố khác nhau giữa các fold.
+
+\textbf{Tại sao SVM (RBF) ổn định nhất trong CV?} SVM tối ưu hóa margin (khoảng cách) giữa các support vectors, tạo ra decision boundary chỉ phụ thuộc vào một số ít mẫu ``quan trọng nhất'' (support vectors). Kernel RBF ($K(x, x') = \exp(-\gamma \lVert x-x' \rVert^2)$) ánh xạ dữ liệu vào không gian chiều cao hơn, cho phép tìm decision boundary phi tuyến. Decision boundary dựa trên support vectors ít bị ảnh hưởng khi thay đổi các mẫu ``dễ'' (non-support vectors), dẫn đến Std F1 thấp (0.0248) qua các fold.
+
+\subsection{Baseline comparison -- xác nhận giá trị của mô hình cải tiến}
+
+Hai baseline đóng vai trò quan trọng trong việc xác nhận rằng các mô hình cải tiến genuinely học được pattern:
+
+\textbf{Dummy Classifier} (strategy=most\_frequent) luôn dự đoán lớp đa số (bệnh tim), cho F1 = 0 trên lớp thiểu số và FN Rate = 100\%. Kết quả này thiết lập ``floor'' -- bất kỳ mô hình nào có F1 $>$ 0 đều tốt hơn việc đoán mò. Trong CV, Dummy đạt Mean F1 = 0.7124 (tính trên cả hai lớp) với Std cực thấp (0.0018), phản ánh đúng tỷ lệ lớp cố định.
+
+\textbf{Logistic Regression} với \texttt{class\_weight=balanced} đạt F1 = 0.8235 trên test và Mean F1 = 0.8253 trong CV -- một baseline đáng ngạc nhiên mạnh. Điều này cho thấy mối quan hệ giữa features và target có \textbf{thành phần tuyến tính đáng kể}. Các mô hình cải tiến chỉ cải thiện thêm 2--5\% F1 so với Logistic, chủ yếu nhờ khả năng capture các mối quan hệ phi tuyến và tương tác giữa features.
+
+\section{So sánh Supervised Learning và Semi-supervised Learning}
+
+\subsection{Phân tích chi tiết hiệu quả khi dữ liệu thiếu nhãn}
+
+Kết quả thử nghiệm semi-supervised learning (Bảng 4.5) cho thấy một phát hiện quan trọng: \textbf{Self-training có thể vượt trội hơn Supervised} ở một số tỷ lệ nhãn nhất định. Cụ thể, ở tỷ lệ nhãn 15\%, Self-training đạt F1 = 0.8507 so với Supervised F1 = 0.8436 (cải thiện +0.84\%); ở 20\%, Self-training đạt F1 = 0.8545 so với Supervised 0.8462 (cải thiện +0.98\%).
+
+Hiện tượng semi-supervised vượt supervised ban đầu có vẻ ``nghịch lý'' -- làm sao sử dụng thêm dữ liệu không nhãn lại cho kết quả tốt hơn? Tuy nhiên, đây là hiện tượng được ghi nhận trong y văn semi-supervised learning \cite{chapelle2006semi} và có thể giải thích qua ba cơ chế:
+
+\textbf{Cơ chế 1 -- Data augmentation effect:} Self-training mở rộng tập huấn luyện bằng pseudo-labels. Với 15\% nhãn ($\sim$74 mẫu labeled), supervised chỉ train trên 74 mẫu. Self-training bổ sung thêm $\sim$300--400 mẫu pseudo-labeled (những mẫu có confidence cao), tăng effective training set lên 4--5 lần. Kích thước tập train lớn hơn giúp mô hình học được biểu diễn tốt hơn từ phân bố dữ liệu tổng thể, đặc biệt ở vùng thưa mẫu.
+
+\textbf{Cơ chế 2 -- Decision boundary smoothing:} Dữ liệu unlabeled cung cấp thông tin về cấu trúc manifold (bề mặt) mà dữ liệu nằm trên. Pseudo-labels từ vùng mật độ cao (high-density regions) giúp ``làm mượt'' decision boundary, đẩy nó ra xa các cụm dữ liệu. Điều này đặc biệt hữu ích khi labeled data quá ít để xác định decision boundary chính xác ở vùng biên.
+
+\textbf{Cơ chế 3 -- Giảm sampling bias:} Với 15\% nhãn, tập labeled chỉ chứa $\sim$74 mẫu. Tập nhỏ này có thể bị sampling bias -- phân bố features không đại diện cho population tổng thể. Dữ liệu unlabeled (although nhãn là pseudo) giúp ``hiệu chỉnh'' phân bố, giảm bias do sampling ngẫu nhiên.
+
+Tuy nhiên, hiệu ứng này \textbf{không xuất hiện ở tất cả tỷ lệ nhãn}:
+\begin{itemize}
+    \item \textbf{Ở 5\% nhãn ($\sim$37 mẫu):} Supervised vẫn tốt hơn (F1: 0.8304 vs 0.8148). Giải thích: với quá ít labeled data, mô hình cơ sở (SVM) chưa đủ chính xác, tạo ra nhiều pseudo-labels sai, gây ``error accumulation'' khi retrain.
+    \item \textbf{Ở 50\% nhãn ($\sim$368 mẫu):} Supervised vượt nhẹ (F1: 0.8744 vs 0.8704). Giải thích: khi labeled data đã lớn, thông tin bổ sung từ unlabeled data ít đóng góp và pseudo-labels bị noise bắt đầu ảnh hưởng tiêu cực.
+    \item \textbf{``Sweet spot'' ở 15--20\%:} Đây là vùng mà labeled data vừa đủ để train mô hình cơ sở reliable (ít pseudo-label sai), nhưng chưa đủ để capture toàn bộ phân bố (unlabeled data vẫn có giá trị).
+\end{itemize}
+
+\subsection{Phân tích nguyên nhân Label Spreading hoạt động kém}
+
+Label Spreading \cite{zhou2004learning} cho kết quả kém hơn đáng kể (F1 chỉ đạt 0.74--0.80) do ba nguyên nhân chính:
+
+Thứ nhất, \textbf{vi phạm giả định manifold:} Label Spreading dựa trên giả định rằng các điểm gần nhau trong không gian đặc trưng nên có cùng nhãn. Giả định này yếu đi đáng kể khi dữ liệu có nhiều missing values đã fill bằng median/mode. Giá trị fill giống nhau tạo ra ``artificial clusters'' -- nhiều mẫu converge về cùng giá trị trung tâm, dẫn đến similarity graph bị ``méo''.
+
+Thứ hai, \textbf{error propagation tích lũy:} Trong graph-based methods, một nhãn sai ở vùng trung tâm graph có thể ``lây lan'' sang nhiều nodes xung quanh. Với tỷ lệ nhãn thấp (5--10\%), phần lớn graph nodes không có ``anchor'' (labeled node gần), khiến propagation dựa trên similarity bị nhiễu lớn.
+
+Thứ ba, \textbf{computational complexity:} Label Spreading xây dựng ma trận similarity $n \times n$ ($920 \times 920$ = 846.400 entries), tiêu tốn nhiều bộ nhớ và thời gian hơn Self-training. Điều này không chỉ ảnh hưởng hiệu suất mà còn cho thấy phương pháp này không scale tốt cho datasets lớn hơn.
+
+\section{Ảnh hưởng của tiền xử lý và Feature Engineering}
+
+\subsection{Tác động của chiến lược xử lý Missing Values}
+
+Chiến lược ``fill\_all'' (fill median/mode cho tất cả cột) là quyết định quan trọng nhất trong tiền xử lý. Nhóm phân tích trade-off của quyết định này:
+
+\textbf{Ưu điểm đã chứng minh:} Giữ nguyên 13 features (thay vì 10 nếu drop \texttt{ca}, \texttt{thal}, \texttt{slope}), giữ nguyên 920 mẫu (thay vì $<$ 300 nếu drop rows). Kết quả cho thấy cả \texttt{ca} và \texttt{thal} đều xuất hiện trong association rules quan trọng (ví dụ: \texttt{ca\_positive} trong luật 17 với confidence 93.75\%), xác nhận rằng giữ lại các features này là quyết định đúng đắn.
+
+\textbf{Rủi ro tiềm ẩn:} Khi fill median, khoảng 65\% giá trị \texttt{ca} (598/920 mẫu) nhận cùng một giá trị. Điều này giảm variance của feature, làm giảm khả năng phân biệt của mô hình trên biến này. Tuy nhiên, Random Forest (với cơ chế random subspace) xử lý vấn đề này tốt hơn SVM, giải thích phần nào vì sao RF đạt PR-AUC cao hơn.
+
+\subsection{Tác động của SMOTE (cân bằng lớp)}
+
+Việc áp dụng SMOTE trên tập train mang lại hiệu quả rõ rệt trong cải thiện Recall cho lớp ``có bệnh tim''. SMOTE \cite{chawla2002smote} tạo mẫu tổng hợp cho lớp thiểu số bằng cách nội suy (interpolation) giữa mẫu thực và k-nearest neighbors trong không gian đặc trưng. Phân tích cho thấy:
+
+\begin{itemize}
+    \item \textbf{Cải thiện FN Rate:} Kết hợp SMOTE + \texttt{class\_weight=balanced}, FN Rate giảm xuống 11.76\% (Random Forest, XGBoost) -- tức là chỉ bỏ sót 12/102 bệnh nhân bệnh trên tập test 184 mẫu.
+    \item \textbf{Rủi ro overfitting:} SMOTE tạo mẫu ``nhân tạo'' bằng interpolation, có thể tạo ra mẫu ở vùng decision boundary không realistic. Tuy nhiên, kết quả CV (Std thấp) cho thấy overfitting không nghiêm trọng với dataset này.
+    \item \textbf{SMOTE chỉ trên train:} Đây là nguyên tắc bất di bất dịch -- nếu áp dụng SMOTE trước split, mẫu synthetic có thể ``nhân bản'' thông tin từ test set vào train, gây data leakage nghiêm trọng.
+\end{itemize}
+
+\subsection{Vai trò của Feature Engineering trong diễn giải kết quả}
+
+Rời rạc hóa theo ngưỡng y khoa (Bảng 2.3, Chương 2) không chỉ phục vụ thuật toán Apriori mà còn nâng cao giá trị \textbf{diễn giải} (interpretability) của toàn bộ dự án. Thay vì nói ``bệnh nhân có cholesterol = 267 mg/dl, oldpeak = 3.4 mm, trestbps = 152 mmHg'', luật kết hợp diễn giải rõ ràng: ``bệnh nhân có cholesterol\_high, oldpeak\_high, bp\_high $\rightarrow$ nguy cơ bệnh tim với confidence 94\%''. Cách trình bày này quen thuộc với bác sĩ lâm sàng, giúp hệ thống DSS dễ được chấp nhận trong thực tế y tế.
+
+Hơn nữa, việc đối chiếu kết quả association rules với medical guidelines quốc tế (ACC/AHA guidelines) cho thấy sự nhất quán: các yếu tố nguy cơ được luật kết hợp phát hiện (ST depression, asymptomatic chest pain, exercise-induced angina, male gender) hoàn toàn phù hợp với các yếu tố nguy cơ được y văn ghi nhận. Điều này tăng cường \textbf{clinical validity} (tính hợp lệ lâm sàng) của dự án.
+
+\section{Khó khăn và thách thức trong quá trình thực hiện}
+
+Trong suốt quá trình phát triển dự án, nhóm đã gặp và giải quyết nhiều khó khăn kỹ thuật cũng như khoa học. Dưới đây là tổng hợp 6 thách thức chính và cách nhóm đã xử lý:
+
+\textbf{Thách thức 1 -- Missing values cực kỳ cao:} Cột \texttt{ca} (65\% thiếu) và \texttt{thal} (53\% thiếu) tạo ra tình huống ``tiến thoái lưỡng nan'': drop cột thì mất features quan trọng, fill thì thêm noise. Giải pháp là fill median/mode kết hợp sử dụng Random Forest (robust với noise từ fill). Nếu có thêm thời gian, nhóm sẽ thử nghiệm MICE (Multiple Imputation) hoặc KNN Imputer.
+
+\textbf{Thách thức 2 -- Data leakage prevention:} Trong quá trình phát triển ban đầu, nhóm phát hiện một lỗi subtle: scaling được thực hiện trước split, dẫn đến test set information leaking vào scaler params. Lỗi này không gây crash nhưng làm kết quả optimistically biased khoảng 1--2\% F1. Nhóm đã sửa bằng cách tái cấu trúc pipeline: scale/SMOTE chỉ fit trên train, transform trên test.
+
+\textbf{Thách thức 3 -- Dữ liệu đa nguồn:} 4 trung tâm y tế ở 3 quốc gia với population demographics khác nhau (tuổi trung bình, tỷ lệ giới tính, thói quen sống) tạo ra selection bias. Cột \texttt{dataset} được loại bỏ, nhưng bias ngầm (confounding variables) vẫn tồn tại. Ví dụ: nếu trung tâm Cleveland có protocol đo oldpeak khác Hungary, giá trị oldpeak giữa hai nguồn không hoàn toàn comparable.
+
+\textbf{Thách thức 4 -- Silhouette Score thấp trong phân cụm:} Giá trị 0.1534 cho thấy phân cụm không rõ ràng. Nhóm đã thử nhiều giá trị $k$ (2--10), hai thuật toán (KMeans, Hierarchical), và cả PCA dimensionality reduction trước clustering. Kết quả đều tương tự, xác nhận rằng vấn đề nằm ở bản chất dữ liệu chứ không phải thuật toán: bệnh tim là tình trạng phức tạp, bệnh nhân bệnh và không bệnh chia sẻ nhiều đặc điểm chung.
+
+\textbf{Thách thức 5 -- Ý nghĩa thống kê:} Với tập test chỉ 184 mẫu, sự khác biệt giữa F1 = 0.857 (RF) và F1 = 0.874 (XGBoost) -- chênh 1.7\% -- có thể không có ý nghĩa thống kê. Một mẫu thay đổi dự đoán có thể lật ngược thứ hạng. Cross-validation (5-fold) giúp giảm thiểu vấn đề này nhưng với 920 mẫu, mỗi fold chỉ có $\sim$184 mẫu validation, vẫn chịu variance đáng kể. Bootstrap confidence interval sẽ là phương pháp tốt hơn nếu có thêm thời gian.
+
+\textbf{Thách thức 6 -- Hyperparameter tuning:} Do hạn chế thời gian, nhóm sử dụng hyperparameters ``reasonable defaults'' (dựa trên kinh nghiệm và tài liệu) thay vì Grid Search hoặc Bayesian Optimization. Điều này có thể dẫn đến mô hình chưa đạt performance tối ưu. Tuy nhiên, kết quả đã vượt tiêu chí thành công (F1 $>$ 0.80, PR-AUC $>$ 0.85), cho thấy default params đã đủ tốt cho dataset này.
+
+\section{Các vấn đề đạo đức và pháp lý (Ethical Considerations)}
+
+Ứng dụng Machine Learning trong y tế đặt ra nhiều vấn đề đạo đức và pháp lý cần cân nhắc nghiêm túc trước khi triển khai:
+
+\textbf{Bias và công bằng (Fairness):} Phân tích False Negative cho thấy mô hình có xu hướng bỏ sót bệnh ở nữ giới nhiều hơn nam giới (33\% FN là nữ trong khi nữ chỉ chiếm 25\% tổng thể). Điều này phản ánh bias trong dữ liệu huấn luyện: phần lớn nghiên cứu bệnh tim lịch sử tập trung vào nam giới, dẫn đến mô hình ``học'' pattern bệnh tim theo tiêu chuẩn nam giới. Nếu triển khai, mô hình có thể gây bất lợi cho bệnh nhân nữ -- một vấn đề ethical nghiêm trọng cần được giải quyết bằng cách: thu thập thêm dữ liệu nữ giới, sử dụng fairness-aware algorithms, hoặc áp dụng threshold riêng cho từng giới.
+
+\textbf{Trách nhiệm và minh bạch:} Mô hình đạt F1 = 0.87, nghĩa là vẫn có $\sim$13\% dự đoán sai. Câu hỏi đặt ra: ai chịu trách nhiệm khi mô hình bỏ sót bệnh nhân bệnh tim (và bệnh nhân không được điều trị kịp thời)? Trong bối cảnh pháp lý hiện tại, mô hình ML chỉ nên được sử dụng như \textbf{công cụ hỗ trợ} (decision support), không thay thế bác sĩ trong quyết định chẩn đoán. Kết quả dự đoán phải luôn kèm theo cảnh báo: ``Đây là kết quả ước lượng từ mô hình máy học, cần được bác sĩ chuyên khoa xác nhận.''
+
+\textbf{Quyền riêng tư dữ liệu bệnh nhân:} Tập dữ liệu UCI đã được ẩn danh hóa (de-identified), nhưng trong triển khai thực tế, hệ thống sẽ xử lý dữ liệu sức khỏe cá nhân nhạy cảm. Cần tuân thủ các quy định bảo vệ dữ liệu (HIPAA ở Mỹ, GDPR ở EU, hoặc Luật Bảo vệ dữ liệu cá nhân tại Việt Nam): mã hóa dữ liệu truyền tải (TLS/SSL), hạn chế quyền truy cập (role-based access control), và không lưu trữ dữ liệu bệnh nhân lâu hơn cần thiết.
+
+\textbf{Vấn đề ``black-box'' và giải thích:} Các mô hình ensemble (Random Forest, XGBoost) là ``black-box'' -- khó giải thích chi tiết tại sao dự đoán bệnh nhân A bị bệnh nhưng bệnh nhân B không. Trong y tế, bác sĩ cần hiểu lý do dự đoán để tin tưởng và sử dụng hệ thống. Giải pháp: tích hợp SHAP (SHapley Additive exPlanations) để phân tích contribution của từng feature cho mỗi dự đoán cụ thể.
+
+\section{Bài học kinh nghiệm (Lessons Learned)}
+
+Qua quá trình thực hiện dự án, nhóm rút ra một số bài học kinh nghiệm quan trọng:
+
+\textbf{Bài học 1 -- Tiền xử lý quan trọng hơn thuật toán:} Sự khác biệt giữa các mô hình cải tiến khá nhỏ (F1 từ 0.84 đến 0.87), nhưng sự khác biệt giữa dữ liệu sạch và dữ liệu thô rất lớn. Nếu không xử lý missing values và outliers, F1 có thể giảm 5--10\%. ``Garbage in, garbage out'' là nguyên tắc luôn đúng.
+
+\textbf{Bài học 2 -- Baseline mạnh hơn tưởng tượng:} Logistic Regression (baseline) đạt F1 = 0.8235, chỉ kém XGBoost (0.8738) khoảng 6\%. Điều này cho thấy nên luôn bắt đầu với baseline đơn giản trước khi thử nghiệm mô hình phức tạp. Nếu baseline đã đủ tốt cho ứng dụng, không cần ``over-engineer'' với deep learning hay ensemble phức tạp.
+
+\textbf{Bài học 3 -- Domain knowledge là chìa khóa:} Việc sử dụng ngưỡng y khoa cho rời rạc hóa (thay vì quantile-based) tạo ra luật kết hợp có ý nghĩa lâm sàng. Ngược lại, nếu rời rạc hóa theo quantile, luật sẽ khó diễn giải cho bác sĩ. Kiến thức lĩnh vực (domain knowledge) giúp Feature Engineering hiệu quả hơn bất kỳ thuật toán tự động nào.
+
+\textbf{Bài học 4 -- Reproducibility là bắt buộc:} Sử dụng \texttt{random\_state = 42} nhất quán, lưu tất cả output, quản lý code trên Git -- những thực hành này tưởng ``nhỏ'' nhưng cực kỳ quan trọng. Khi phát hiện lỗi data leakage trong quá trình phát triển, nhóm có thể quay lại chính xác trạng thái trước lỗi và re-run pipeline.
+
+\section{Tổng hợp chương}
+
+Chương này đã phân tích sâu kết quả thử nghiệm từ nhiều góc độ: so sánh ưu nhược điểm mô hình, giải thích vì sao Random Forest và XGBoost vượt trội, phân tích hiệu quả semi-supervised learning, đánh giá tác động của tiền xử lý, và rút ra bài học kinh nghiệm. Nhóm cũng đề cập các vấn đề đạo đức trong ứng dụng ML y tế. Kết luận chính: Random Forest là mô hình toàn diện nhất (PR-AUC cao nhất, ổn định, giải thích được), Self-training tiềm năng ở tỷ lệ nhãn 15--20\%, và tiền xử lý dữ liệu là yếu tố then chốt quyết định chất lượng toàn hệ thống.

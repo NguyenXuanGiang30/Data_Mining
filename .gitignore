@@ -1,0 +1,27 @@
+# Data (không commit file lớn)
+data/raw/*.csv
+data/raw/*.zip
+data/raw/*.xlsx
+
+# Models
+outputs/models/*.pkl
+# outputs/models/*.joblib   # cho phép commit model để deploy Streamlit Cloud
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+venv/
+env/

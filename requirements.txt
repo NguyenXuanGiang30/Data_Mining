@@ -1,0 +1,33 @@
+# Core
+streamlit
+pandas
+numpy
+scikit-learn
+scipy
+
+# Visualization
+matplotlib
+seaborn
+
+# Mining
+mlxtend          # Apriori, association rules
+
+# Models
+xgboost
+imbalanced-learn # SMOTE
+
+# Notebooks
+jupyter
+papermill
+
+# Config
+pyyaml
+
+# Semi-supervised (tùy chọn)
+# label-spreading có sẵn trong scikit-learn
+
+# Serialization
+joblib
+
+# Demo app (điểm thưởng)
+streamlit

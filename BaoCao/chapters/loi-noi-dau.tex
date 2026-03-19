@@ -1,0 +1,30 @@
+\chapter*{Lời nói đầu}
+\addcontentsline{toc}{chapter}{Lời nói đầu}
+
+Bệnh tim mạch (cardiovascular disease) hiện đang là nguyên nhân gây tử vong hàng đầu trên toàn thế giới, chiếm khoảng 17,9 triệu ca tử vong mỗi năm theo thống kê của Tổ chức Y tế Thế giới (WHO). Tại Việt Nam, tỷ lệ mắc bệnh tim mạch ngày càng gia tăng do sự thay đổi lối sống, chế độ ăn uống không lành mạnh và tình trạng ô nhiễm môi trường. Việc phát hiện sớm nguy cơ bệnh tim mạch đóng vai trò quan trọng trong việc giảm thiểu tỷ lệ tử vong và nâng cao chất lượng cuộc sống cho bệnh nhân.
+
+Trong bối cảnh đó, việc ứng dụng các kỹ thuật khai phá dữ liệu (Data Mining) và học máy (Machine Learning) vào lĩnh vực y tế đã trở thành một xu hướng tất yếu. Các phương pháp này có khả năng phân tích lượng lớn dữ liệu lâm sàng, phát hiện các mẫu (pattern) tiềm ẩn và xây dựng mô hình dự đoán chính xác, từ đó hỗ trợ bác sĩ trong quá trình chẩn đoán và đưa ra quyết định điều trị.
+
+\textbf{Lý do lựa chọn đề tài:} Nhóm lựa chọn đề tài ``Dự đoán bệnh tim sử dụng các kỹ thuật khai phá dữ liệu'' bởi tính cấp thiết của bài toán trong thực tế y tế, đồng thời đề tài cho phép áp dụng đa dạng các kỹ thuật khai phá dữ liệu đã được học trong học phần: từ luật kết hợp (Association Rules), phân cụm (Clustering), phân lớp (Classification) đến học bán giám sát (Semi-supervised Learning).
+
+\textbf{Mục tiêu của dự án:}
+\begin{itemize}
+    \item Phát hiện các mẫu (pattern) và luật kết hợp liên quan đến bệnh tim thông qua thuật toán Apriori.
+    \item Phân nhóm bệnh nhân theo mức độ nguy cơ bằng các thuật toán phân cụm KMeans và Hierarchical Clustering.
+    \item Xây dựng mô hình dự đoán bệnh tim với độ chính xác cao sử dụng SVM, Random Forest và XGBoost.
+    \item Đánh giá hiệu quả của phương pháp học bán giám sát khi dữ liệu thiếu nhãn.
+    \item Đạt tiêu chí F1-Score $> 0.80$ và PR-AUC $> 0.85$ trên tập kiểm tra.
+\end{itemize}
+
+\textbf{Phạm vi thực hiện:} Đề tài sử dụng tập dữ liệu UCI Heart Disease Dataset gồm 920 bản ghi bệnh nhân từ 4 trung tâm y tế (Cleveland, Hungary, Switzerland, VA Long Beach) với 16 thuộc tính lâm sàng. Phạm vi nghiên cứu tập trung vào bài toán phân lớp nhị phân (có/không bệnh tim) kết hợp với phân tích luật kết hợp, phân cụm và đánh giá phương pháp bán giám sát.
+
+\textbf{Cấu trúc báo cáo:} Báo cáo được tổ chức thành 6 chương:
+
+\begin{itemize}
+    \item \textbf{Chương 1 -- Đặt vấn đề và phân tích yêu cầu:} Trình bày bối cảnh bài toán, mục tiêu, tiêu chí đánh giá, mô tả dữ liệu và phân tích khám phá dữ liệu (EDA).
+    \item \textbf{Chương 2 -- Thiết kế giải pháp và quy trình khai phá dữ liệu:} Mô tả pipeline xử lý dữ liệu, tiền xử lý, xây dựng đặc trưng và lựa chọn mô hình.
+    \item \textbf{Chương 3 -- Phân tích mã nguồn và chức năng hệ thống:} Trình bày kiến trúc repository, vai trò các module và cách kết nối giữa các thành phần.
+    \item \textbf{Chương 4 -- Thử nghiệm và kết quả:} Thiết lập thí nghiệm, đánh giá mô hình và trình bày kết quả chi tiết.
+    \item \textbf{Chương 5 -- Thảo luận và so sánh:} Phân tích sâu kết quả, so sánh phương pháp, thảo luận ảnh hưởng của tiền xử lý và semi-supervised learning.
+    \item \textbf{Chương 6 -- Tổng kết và hướng phát triển:} Tóm tắt kết quả chính và đề xuất hướng cải tiến trong tương lai.
+\end{itemize}

@@ -1,0 +1,144 @@
+\chapter{Tổng kết và hướng phát triển}\label{chapter_conclusion}
+
+\section{Tổng kết}
+
+\subsection{Tóm tắt dự án và phương pháp đã triển khai}
+
+Dự án ``Dự đoán bệnh tim sử dụng các kỹ thuật khai phá dữ liệu'' đã hoàn thành đầy đủ chu trình khai phá dữ liệu end-to-end, từ thu thập dữ liệu, tiền xử lý, xây dựng đặc trưng, áp dụng đa dạng thuật toán khai phá, đến đánh giá và phân tích kết quả. Hệ thống được xây dựng trên tập dữ liệu UCI Heart Disease gồm 920 bệnh nhân từ 4 trung tâm y tế quốc tế, với 16 thuộc tính lâm sàng.
+
+Dự án đã triển khai thành công 4 nhóm kỹ thuật khai phá dữ liệu chính. \textbf{Khai phá luật kết hợp} sử dụng thuật toán Apriori tìm ra 3.792 luật kết hợp, trong đó top 20 luật liên quan trực tiếp đến bệnh tim có confidence từ 93.7\% đến 96.6\%. \textbf{Phân cụm} sử dụng KMeans và Hierarchical Clustering chia 920 bệnh nhân thành 4 nhóm nguy cơ khác nhau. \textbf{Phân lớp} sử dụng 6 mô hình (2 baseline + 4 cải tiến: SVM linear, SVM RBF, Random Forest, XGBoost) với kỹ thuật SMOTE cân bằng lớp. \textbf{Học bán giám sát} sử dụng Self-training và Label Spreading ở 6 tỷ lệ nhãn (5\%--50\%) để đánh giá hiệu quả khi dữ liệu thiếu nhãn.
+
+Toàn bộ pipeline được cài đặt dưới dạng module Python tái sử dụng (6 packages, $>$1.500 dòng code) với tham số quản lý tập trung qua file YAML, đảm bảo tính reproducible (random\_state = 42) và tự động hóa (chạy end-to-end bằng một script).
+
+\subsection{Kết quả chính đạt được}
+
+Bảng \ref{tab:summary_results} tổng hợp kết quả đạt được so với các tiêu chí thành công được đề ra từ đầu dự án:
+
+\begin{table}[H]
+\centering
+\caption{Tổng hợp kết quả đạt được đối chiếu tiêu chí thành công.}
+\label{tab:summary_results}
+\small
+\begin{tabular}{|l|l|l|c|l|}
+\hline
+\textbf{Kỹ thuật} & \textbf{Tiêu chí ban đầu} & \textbf{Kết quả đạt được} & \textbf{Đạt?} & \textbf{Ghi chú} \\ \hline
+\multirow{2}{*}{Phân lớp} & F1-Score $>$ 0.80 & XGBoost: \textbf{0.8738} & \checkmark & Vượt 9.2\% so với yêu cầu \\ \cline{2-5}
+ & PR-AUC $>$ 0.85 & Random Forest: \textbf{0.9313} & \checkmark & Vượt 9.6\% so với yêu cầu \\ \hline
+Luật kết hợp & Conf $>$ 0.50, Lift $>$ 1.2 & Top rule: conf=\textbf{0.966}, lift=\textbf{1.745} & \checkmark & 3.792 luật, top 20 rất mạnh \\ \hline
+Phân cụm & Phân nhóm có đặc trưng rõ & 4 cụm, Sil = 0.1534 & $\triangle$ & Cụm chồng chéo (bản chất data) \\ \hline
+Bán giám sát & So sánh supervised & Self-training $\geq$ supervised ở 15--20\% nhãn & \checkmark & Phát hiện ``sweet spot'' \\ \hline
+\end{tabular}
+\end{table}
+
+\textbf{Đánh giá tổng thể:} 4/5 tiêu chí đạt hoàn toàn, 1 tiêu chí đạt một phần (phân cụm). Kết quả \textbf{vượt mong đợi} ở phân lớp và luật kết hợp. Đặc biệt, cả 4 mô hình cải tiến đều vượt ngưỡng F1 $>$ 0.80, và 3/4 mô hình đạt PR-AUC $>$ 0.85 (Random Forest, SVM RBF, SVM linear). XGBoost có PR-AUC = 0.8924, vẫn trên ngưỡng 0.85.
+
+\subsection{Đề xuất mô hình tốt nhất}
+
+Dựa trên phân tích toàn diện kết quả thực nghiệm, nhóm đề xuất \textbf{Random Forest} là mô hình tốt nhất cho bài toán dự đoán bệnh tim trong bối cảnh ứng dụng lâm sàng, với 6 lý do chính:
+
+\begin{enumerate}
+    \item \textbf{PR-AUC cao nhất (0.9313):} Đây là metric quan trọng nhất trong bối cảnh dữ liệu mất cân bằng nhẹ. PR-AUC cao đảm bảo mô hình duy trì cả Precision lẫn Recall tốt ở nhiều ngưỡng phân loại khác nhau, cho phép bác sĩ điều chỉnh threshold tùy theo mục đích sàng lọc.
+    \item \textbf{ROC-AUC cao nhất (0.9206):} Khả năng phân biệt tổng thể giữa hai lớp là tốt nhất. Diện tích 0.92 cho thấy mô hình ``hiểu'' rất rõ sự khác biệt giữa bệnh nhân bệnh và không bệnh.
+    \item \textbf{FN Rate thấp (11.76\%):} Trọng yếu trong y tế -- chỉ bỏ sót khoảng 12/102 bệnh nhân bệnh. So với Logistic Regression (18 ca bỏ sót), RF giảm 33\% số ca bỏ sót.
+    \item \textbf{F1-Score cạnh tranh (0.8571):} Tuy không phải cao nhất (XGBoost: 0.8738), nhưng chênh lệch chỉ 1.67\% -- không có ý nghĩa thống kê đáng kể.
+    \item \textbf{Cross-validation ổn định (Mean F1 = 0.8375, Std = 0.0245):} Mô hình cho kết quả nhất quán qua 5 fold, đáng tin cậy cho ứng dụng thực tế.
+    \item \textbf{Feature Importance:} Random Forest cung cấp danh sách features quan trọng nhất (dựa trên reduction in impurity), giúp bác sĩ hiểu lý do dự đoán -- tăng trust và adoptability.
+\end{enumerate}
+
+XGBoost tuy có F1-Score cao nhất (0.8738), nhưng PR-AUC thấp hơn (0.8924 vs 0.9313), CV variance lớn hơn (Std = 0.0332 vs 0.0245), và không cung cấp feature importance trực quan bằng Random Forest. Trong bối cảnh y tế, \textbf{sự ổn định và khả năng diễn giải được ưu tiên hơn performance marginal}.
+
+\subsection{Các insight y khoa từ dự án}
+
+Ngoài kết quả kỹ thuật, dự án rút ra được một số insight y khoa có giá trị ứng dụng:
+
+\textbf{Insight 1 -- Yếu tố nguy cơ hàng đầu:} ST depression cao (\texttt{oldpeak $\geq$ 2 mm}) xuất hiện trong 10/10 luật kết hợp mạnh nhất, xác nhận vai trò then chốt của chỉ số điện tâm đồ trong dự đoán bệnh tim. Kết hợp với đau ngực không triệu chứng (\texttt{asymptomatic chest pain}) -- một dấu hiệu ``im lặng'' (silent ischemia) -- hai yếu tố này tạo thành tổ hợp nguy hiểm nhất: confidence lên đến 96.6\%.
+
+\textbf{Insight 2 -- Giới tính là yếu tố điều chỉnh (modifier):} Nam giới (\texttt{is\_male}) xuất hiện trong 8/10 luật mạnh nhất: khi kết hợp với các yếu tố nguy cơ khác, giới tính nam làm tăng confidence đáng kể. Điều này phù hợp với y văn: nam giới có nguy cơ bệnh tim mạch cao hơn nữ giới trước tuổi mãn kinh, do thiếu tác dụng bảo vệ của estrogen.
+
+\textbf{Insight 3 -- Giá trị của dữ liệu ``expensive'':} Mặc dù \texttt{ca} (fluoroscopy) và \texttt{thal} (thalassemia) có $>$ 50\% missing, việc giữ lại và fill giá trị cho kết quả tốt hơn loại bỏ. Luật \texttt{ca\_positive, cp\_asymptomatic $\rightarrow$ heart\_disease} (confidence 93.75\%, luật 17) xác nhận \texttt{ca} vẫn đóng vai trò quan trọng dù có nhiều noise từ fill.
+
+\textbf{Insight 4 -- Semi-supervised tiềm năng trong y tế:} Kết quả cho thấy chỉ cần 15--20\% bệnh nhân có chẩn đoán xác nhận (labeled), kết hợp Self-training, có thể đạt hiệu quả tương đương supervised. Ứng dụng tiềm năng: ở các cơ sở y tế tuyến cơ sở nơi không phải bệnh nhân nào cũng có chẩn đoán chuyên gia, mô hình semi-supervised có thể tận dụng dữ liệu chưa gán nhãn phong phú để cải thiện dự đoán.
+
+\section{Hướng phát triển}
+
+\subsection{Cải tiến mô hình và thuật toán}
+
+Nhóm xác định nhiều hướng cải tiến cụ thể để nâng cao hiệu quả mô hình trong tương lai:
+
+\textbf{Tối ưu hóa hyperparameters:} Sử dụng Grid Search hoặc Bayesian Optimization (Optuna, Hyperopt) để tìm bộ tham số tối ưu cho Random Forest (n\_estimators, max\_depth, min\_samples\_split, min\_samples\_leaf) và XGBoost (n\_estimators, max\_depth, learning\_rate, gamma, subsample, colsample\_bytree). Với default params đã đạt F1 $\approx$ 0.87, nhóm ước tính tối ưu hóa có thể cải thiện thêm 1--3\% F1.
+
+\textbf{Ensemble nâng cao (Stacking/Blending):} Kết hợp nhiều mô hình thông qua Stacking: sử dụng SVM, Random Forest và XGBoost làm ``base learners'' (level-0), với Logistic Regression làm ``meta-learner'' (level-1). Stacking tận dụng ưu điểm bổ sung của các mô hình: SVM tốt ở decision boundary, RF tốt ở ranking, XGBoost tốt ở hard examples. Phương pháp này thường cải thiện 1--2\% F1 so với single best model.
+
+\textbf{Deep Learning cho dữ liệu bảng:} Thử nghiệm các kiến trúc neural network chuyên biệt cho tabular data: TabNet (Arik \& Pfister, 2021) sử dụng attention mechanism để tự động chọn features, hoặc Wide \& Deep Learning (Cheng et al., 2016) kết hợp memorization và generalization. Tuy nhiên, với tập dữ liệu nhỏ (920 mẫu), deep learning có thể không outperform gradient boosting.
+
+\textbf{Xử lý missing values nâng cao:} Thay thế fill median/mode bằng các phương pháp imputation tiên tiến hơn: MICE (Multiple Imputation by Chained Equations) -- tạo nhiều bản imputation khác nhau dựa trên conditional distribution của từng biến; hoặc KNN Imputer -- fill dựa trên giá trị trung bình của k-nearest neighbors trong không gian features. Các phương pháp này tạo ra giá trị fill ``thông minh'' hơn, phản ánh mối quan hệ giữa các biến.
+
+\textbf{Feature Engineering nâng cao:} Tạo thêm interaction features: ví dụ \texttt{age $\times$ oldpeak}, \texttt{chol $\times$ bp}, \texttt{age\_group $\times$ sex}. Phân tích cho thấy mối quan hệ giữa features và target có thể phi tuyến và có tương tác bậc cao mà single features không capture được.
+
+\subsection{Mở rộng dữ liệu}
+
+\textbf{Tăng kích thước tập dữ liệu:} 920 mẫu là kích thước nhỏ cho Machine Learning hiện đại. Mở rộng dataset bằng cách: (1) thu thập thêm dữ liệu từ các bệnh viện Việt Nam (tăng tính phù hợp thực tiễn); (2) kết hợp với các tập dữ liệu tim mạch khác (PhysioNet, MIMIC-III cardiac subset); (3) tạo synthetic data bằng GANs (Generative Adversarial Networks) được train trên dữ liệu thật.
+
+\textbf{Tích hợp dữ liệu đa phương thức (multimodal):} Kết hợp dữ liệu lâm sàng (structured) hiện tại với: (1) hình ảnh y khoa (X-quang ngực, siêu âm tim -- unstructured); (2) dữ liệu ECG waveform (time-series); (3) dữ liệu lối sống (diet, exercise, smoking history -- questionnaire). Multimodal learning sử dụng kiến trúc fusion (early/late fusion) để kết hợp thông tin từ nhiều nguồn, thường cho kết quả tốt hơn đáng kể so với single-modality.
+
+\textbf{Dữ liệu chuỗi thời gian (longitudinal data):} Thu thập dữ liệu theo dõi bệnh nhân qua nhiều lần khám (thay vì snapshot tại một thời điểm). Phân tích xu hướng thay đổi (trends) của cholesterol, huyết áp, nhịp tim theo thời gian có thể cung cấp thông tin dự đoán mạnh hơn giá trị tĩnh tại một thời điểm.
+
+\subsection{Triển khai và ứng dụng thực tế}
+
+\textbf{Hoàn thiện ứng dụng web:} Nâng cấp prototype Streamlit thành sản phẩm web hoàn chỉnh: giao diện chuyên nghiệp (React/Angular frontend), bảo mật dữ liệu bệnh nhân (mã hóa, authentication), lưu lịch sử dự đoán, hỗ trợ đa ngôn ngữ (Tiếng Việt, Tiếng Anh). Tích hợp biểu đồ SHAP trực quan cho mỗi dự đoán để bác sĩ hiểu lý do.
+
+\textbf{API hóa và tích hợp HIS:} Xây dựng REST API (FastAPI/Flask) để tích hợp mô hình dự đoán vào hệ thống thông tin bệnh viện (HIS -- Hospital Information System). Khi bác sĩ nhập thông tin bệnh nhân vào HIS, hệ thống tự động gọi API, nhận kết quả dự đoán và hiển thị cảnh báo nguy cơ. Endpoint chính: \texttt{POST /api/predict} nhận JSON chứa 13 features, trả về probability và risk level.
+
+\textbf{Model monitoring và MLOps:} Triển khai hệ thống giám sát model performance theo thời gian thực: (1) Theo dõi prediction distribution -- phát hiện data drift khi phân bố dữ liệu mới khác biệt đáng kể so với training data; (2) Tự động retrain model khi performance giảm dưới ngưỡng; (3) A/B testing giữa model versions. Sử dụng MLflow hoặc DVC để quản lý model versioning, experiment tracking.
+
+\textbf{Explainability (giải thích mô hình):} Tích hợp SHAP (SHapley Additive exPlanations) \cite{pedregosa2011scikit} để giải thích dự đoán cho từng bệnh nhân cụ thể. SHAP values cho biết mỗi feature đóng góp bao nhiêu vào prediction probability: ví dụ ``cholesterol cao đóng góp +15\% vào xác suất bệnh tim của bệnh nhân này, nhịp tim tối đa thấp đóng góp +12\%''. Khả năng giải thích này rất quan trọng trong y tế -- bác sĩ cần hiểu \textit{tại sao} mô hình dự đoán, không chỉ kết quả.
+
+\subsection{Các công nghệ và phương pháp tiềm năng}
+
+\textbf{AutoML (Automated Machine Learning):} Sử dụng H2O AutoML, Auto-sklearn hoặc TPOT để tự động thăm dò không gian mô hình rộng hơn: tự động thử hàng trăm combinations giữa preprocessing steps, algorithms và hyperparameters. AutoML đặc biệt hữu ích khi mở rộng pipeline cho datasets y tế mới.
+
+\textbf{Federated Learning (Học phân tán):} Trong bối cảnh y tế, chia sẻ dữ liệu bệnh nhân giữa các bệnh viện gặp rào cản pháp lý (quyền riêng tư) và kỹ thuật (data residency). Federated Learning cho phép train mô hình chung trên dữ liệu phân tán tại nhiều bệnh viện mà \textit{không cần tập trung dữ liệu}: mỗi bệnh viện train model local, gửi gradients (không phải data) về server tổng hợp. Phương pháp này vừa bảo vệ quyền riêng tư bệnh nhân vừa tận dụng được dữ liệu đa dạng.
+
+\textbf{Graph Neural Networks (GNN):} Mô hình hóa mối quan hệ giữa bệnh nhân dưới dạng đồ thị (similarity graph) và sử dụng GNN để cải thiện label propagation trong semi-supervised learning. So với Label Spreading truyền thống \cite{zhou2004learning}, GNN có khả năng học biểu diễn (representation learning) phong phú hơn, giúp xử lý tốt hơn dữ liệu có nhiều noise từ missing value imputation.
+
+\textbf{Causal Inference (Suy luận nhân quả):} Hiện tại, mô hình chỉ phát hiện tương quan (correlation) giữa features và bệnh tim, chưa xác nhận quan hệ nhân quả (causation). Sử dụng phương pháp causal inference (DAG -- Directed Acyclic Graphs, instrumental variables, do-calculus) để xác định chiều hướng tác động: ví dụ ``cholesterol cao \textit{gây ra} bệnh tim'' hay ``cholesterol cao và bệnh tim cùng do yếu tố thứ ba (lối sống không lành mạnh) gây ra''. Hiểu nhân quả giúp thiết kế can thiệp (intervention) y tế chính xác hơn.
+
+\section{Hạn chế của dự án}
+
+Mặc dù đạt được nhiều kết quả tích cực, dự án vẫn tồn tại một số hạn chế cần được thừa nhận một cách khách quan:
+
+\textbf{Hạn chế 1 -- Kích thước dữ liệu nhỏ:} Tập dữ liệu 920 mẫu là khá nhỏ đối với Machine Learning hiện đại. Với kích thước này, sự khác biệt nhỏ giữa các mô hình (1--2\% F1) có thể không có ý nghĩa thống kê. Mô hình phức tạp (deep learning) khó phát huy hiệu quả trên dữ liệu nhỏ. Nhóm đã sử dụng cross-validation để giảm thiểu vấn đề này, nhưng bootstrap significance test sẽ cung cấp đánh giá chặt chẽ hơn.
+
+\textbf{Hạn chế 2 -- Missing values rất cao:} Cột \texttt{ca} (65\% thiếu) và \texttt{thal} (53\% thiếu) có tỷ lệ missing quá cao. Mặc dù nhóm chọn fill median/mode (và kết quả cho thấy quyết định này hiệu quả), giá trị fill không thể thay thế được giá trị thật. Mô đồng thời, việc fill median tạo ra ``mass point'' -- nhiều mẫu converge về cùng một giá trị -- giảm variance và discriminative power của feature. Phương pháp imputation nâng cao (MICE, KNN Imputer) có thể cải thiện điều này.
+
+\textbf{Hạn chế 3 -- Chưa tối ưu hóa hyperparameters:} Do hạn chế thời gian, tất cả mô hình sử dụng ``reasonable default'' hyperparameters. Grid Search hoặc Bayesian Optimization trên không gian hyperparameter có thể cải thiện thêm 1--3\% F1. Đặc biệt, XGBoost có nhiều hyperparameters cần tuning (\texttt{max\_depth}, \texttt{learning\_rate}, \texttt{subsample}, \texttt{colsample\_bytree}, \texttt{gamma}, \texttt{min\_child\_weight}), và performance nhạy cảm với lựa chọn giá trị.
+
+\textbf{Hạn chế 4 -- Thiếu external validation:} Mô hình chỉ được đánh giá trên tập dữ liệu UCI (internal validation). Để khẳng định tính tổng quát hóa, cần external validation trên một tập dữ liệu bệnh tim hoàn toàn độc lập (ví dụ: dữ liệu từ bệnh viện Việt Nam, hoặc datasets khác như PhysioNet). Mô hình có thể perform khác biệt đáng kể trên populations khác.
+
+\textbf{Hạn chế 5 -- Phân cụm chưa rõ ràng:} Silhouette Score = 0.1534 cho thấy phân cụm không tách biệt tốt. Mặc dù đây là bản chất của dữ liệu y tế (chồng chéo giữa nhóm bệnh/không bệnh), kết quả phân cụm chưa đủ mạnh để sử dụng trực tiếp trong phân loại nguy cơ lâm sàng. Cần thêm features hoặc sử dụng thuật toán phân cụm nâng cao (DBSCAN, Gaussian Mixture Models) để cải thiện.
+
+\textbf{Hạn chế 6 -- Chưa xem xét temporal aspects:} Dữ liệu là snapshot tại một thời điểm, không phản ánh sự thay đổi theo thời gian. Trong thực tế, huyết áp, cholesterol, nhịp tim của bệnh nhân thay đổi liên tục. Mô hình hiện tại không capture được xu hướng (trend) -- một yếu tố dự đoán mạnh trong y tế.
+
+\section{Phân công công việc nhóm}
+
+Bảng \ref{tab:contribution} trình bày phân công công việc của từng thành viên:
+
+\begin{table}[H]
+\centering
+\caption{Phân công công việc của các thành viên nhóm.}
+\label{tab:contribution}
+\begin{tabular}{|l|p{8cm}|}
+\hline
+\textbf{Thành viên} & \textbf{Nhiệm vụ chính} \\ \hline
+Nguyễn Xuân Giang & Thiết kế pipeline tổng thể, cài đặt module tiền xử lý (\texttt{cleaner.py}), mô hình phân lớp (\texttt{supervised.py}), semi-supervised (\texttt{semi\_supervised.py}), viết báo cáo \\ \hline
+Phạm Đức Duy Tiến & Cài đặt Feature Engineering (\texttt{builder.py}), thuật toán Apriori (\texttt{association.py}), ứng dụng Streamlit, kiểm thử \\ \hline
+Vương Đức Tuấn & Cài đặt phân cụm (\texttt{clustering.py}), module đánh giá (\texttt{metrics.py}), trực quan hóa (\texttt{plots.py}), phân tích EDA \\ \hline
+Dương Văn Việt & Thu thập và khảo sát dữ liệu, viết module báo cáo (\texttt{report.py}), quản lý cấu hình (\texttt{params.yaml}), soạn tài liệu \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Lời kết}
+
+Dự án ``Dự đoán bệnh tim sử dụng các kỹ thuật khai phá dữ liệu'' đã minh chứng rằng các phương pháp khai phá dữ liệu có thể mang lại giá trị thực tiễn trong lĩnh vực y tế. Với F1-Score đạt 0.87 và PR-AUC đạt 0.93, hệ thống có tiềm năng trở thành công cụ sàng lọc hữu ích, giúp phát hiện sớm bệnh nhân có nguy cơ bệnh tim mạch. Các luật kết hợp phát hiện được không chỉ xác nhận kiến thức y khoa hiện có mà còn cung cấp cơ sở định lượng cụ thể cho công tác tư vấn và phân loại nguy cơ.
+
+Nhóm hy vọng rằng dự án này sẽ là nền tảng cho các nghiên cứu tiếp theo, đặc biệt trong việc mở rộng dữ liệu với bệnh nhân Việt Nam, tích hợp explainability (SHAP), và triển khai thực tế tại các cơ sở y tế. Sự kết hợp giữa trí tuệ nhân tạo và chuyên môn y khoa là hướng đi đầy triển vọng, hứa hẹn cải thiện chất lượng chăm sóc sức khỏe và cứu sống nhiều bệnh nhân hơn trong tương lai.

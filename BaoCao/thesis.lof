@@ -1,0 +1,16 @@
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Phân bố biến mục tiêu (Target Distribution): 0 = không bệnh tim, 1 = có bệnh tim.}}{10}{figure.caption.8}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Phân bố các biến số liên tục trong tập dữ liệu Heart Disease.}}{11}{figure.caption.9}%
+\contentsline {figure}{\numberline {1.3}{\ignorespaces Ma trận tương quan Pearson giữa các biến số trong tập dữ liệu.}}{12}{figure.caption.10}%
+\contentsline {figure}{\numberline {1.4}{\ignorespaces Phân bố các đặc trưng chính theo biến mục tiêu (0 vs 1).}}{13}{figure.caption.11}%
+\contentsline {figure}{\numberline {1.5}{\ignorespaces Tỷ lệ dữ liệu thiếu (missing values) theo từng cột -- cột \texttt {ca} và \texttt {thal} có tỷ lệ thiếu rất cao.}}{14}{figure.caption.12}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Elbow plot (trái) và Silhouette Score (phải) theo số cụm $k$ -- số cụm tối ưu $k = 4$.}}{39}{figure.caption.19}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Đặc điểm trung bình các cụm bệnh nhân -- mỗi cụm có profile y khoa khác biệt.}}{40}{figure.caption.20}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Confusion Matrix của Random Forest: TP, TN, FP, FN trên tập test 184 mẫu.}}{42}{figure.caption.23}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Đường cong ROC (trái) và Precision-Recall (phải) -- Random Forest có diện tích lớn nhất.}}{43}{figure.caption.24}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces So sánh tổng quan hiệu suất các mô hình phân lớp.}}{43}{figure.caption.25}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

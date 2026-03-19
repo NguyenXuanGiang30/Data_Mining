@@ -1,0 +1,53 @@
+# ============================================
+# Tham số cấu hình chung cho toàn bộ pipeline
+# ============================================
+
+# Random seed để tái lập kết quả
+seed: 42
+
+# Đường dẫn dữ liệu
+paths:
+  raw_data: "data/raw/heart.csv"
+  processed_data: "data/processed/heart_processed.csv"
+  discretized_data: "data/processed/heart_discretized.csv"
+  outputs: "outputs/"
+  figures: "outputs/figures/"
+  tables: "outputs/tables/"
+  models: "outputs/models/"
+
+# Tỷ lệ chia dữ liệu
+split:
+  test_size: 0.2
+  stratify: true
+
+# Tiền xử lý
+preprocessing:
+  drop_cols: ["id", "dataset"]
+  missing_strategy: "fill_all"  # drop_high_missing, fill_all, drop_rows
+  missing_threshold: 0.4
+  encode_method: "label"        # label, onehot
+  handle_outliers: true
+  scale: false                  # scale riêng trong từng bước
+
+# Association Rule Mining (Apriori)
+apriori:
+  min_support: 0.08
+  min_confidence: 0.5
+  min_lift: 1.2
+
+# Clustering
+clustering:
+  k_range_min: 2
+  k_range_max: 10
+  methods: ["kmeans", "hierarchical"]
+
+# Classification
+classification:
+  models: ["SVM (linear)", "SVM (RBF)", "Random Forest", "XGBoost"]
+  use_smote: true
+  cv_folds: 5
+
+# Semi-supervised
+semi_supervised:
+  label_ratios: [0.05, 0.10, 0.15, 0.20, 0.30, 0.50]
+  methods: ["self_training", "label_spreading"]
