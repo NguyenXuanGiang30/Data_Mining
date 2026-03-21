@@ -12,12 +12,18 @@ import yaml
 import os
 
 
+def get_project_root():
+    """Trỏ về thư mục gốc của project (Data_Mining)."""
+    from pathlib import Path
+    return Path(__file__).resolve().parents[2]
+
+
 def load_params(config_path="configs/params.yaml"):
     """Đọc tham số cấu hình từ file YAML."""
-    with open(config_path, "r", encoding="utf-8") as f:
+    full_path = get_project_root() / config_path
+    with open(full_path, "r", encoding="utf-8") as f:
         params = yaml.safe_load(f)
     return params
-
 
 def load_raw_data(file_path=None):
     """
@@ -35,7 +41,9 @@ def load_raw_data(file_path=None):
     """
     if file_path is None:
         params = load_params()
-        file_path = params["paths"]["raw_data"]
+        file_path = get_project_root() / params["paths"]["raw_data"]
+    elif not str(file_path).startswith(str(get_project_root())) and not os.path.isabs(file_path):
+        file_path = get_project_root() / file_path
     
     df = pd.read_csv(file_path)
     print(f"✅ Loaded data from: {file_path}")
@@ -47,7 +55,9 @@ def load_processed_data(file_path=None):
     """Đọc dữ liệu đã qua tiền xử lý."""
     if file_path is None:
         params = load_params()
-        file_path = params["paths"]["processed_data"]
+        file_path = get_project_root() / params["paths"]["processed_data"]
+    elif not str(file_path).startswith(str(get_project_root())) and not os.path.isabs(file_path):
+        file_path = get_project_root() / file_path
     
     df = pd.read_csv(file_path)
     print(f"✅ Loaded processed data from: {file_path}")
